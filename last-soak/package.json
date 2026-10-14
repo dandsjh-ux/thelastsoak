@@ -1,0 +1,23 @@
+{
+  "name": "the-last-soak",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Last Soak - a cutesy isometric multiplayer whodunit (three.js + Socket.IO)",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "three": "^0.186.1",
+    "vite": "^8.3.2"
+  }
+}

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>The Last Soak</title>
+  <meta name="description" content="The Last Soak – a cutesy isometric whodunit. Who drowned Mr. Dan the capybara in his own pond?" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛁</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="sky"></div>
+  <canvas id="scene"></canvas>
+  <div id="anchors"></div>
+
+  <!-- ============ HOME ============ -->
+  <section id="home" class="screen">
+    <div class="home-card card">
+      <div class="logo">
+        <img id="logoDan" alt="" />
+        <h1><span>The</span> Last Soak</h1>
+        <p class="tag">Who drowned Mr. Dan the capybara in his own pond?</p>
+      </div>
+      <label class="field">Your name
+        <input id="nameInput" maxlength="16" placeholder="e.g. Sam" autocomplete="off" />
+      </label>
+      <div class="home-actions">
+        <button id="createBtn" class="btn primary big">🏠 Host a game</button>
+        <div class="join-row">
+          <input id="codeInput" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button id="joinBtn" class="btn">Join</button>
+        </div>
+      </div>
+      <p id="homeErr" class="err"></p>
+      <details class="howto">
+        <summary>How to play</summary>
+        <ul>
+          <li><b>2–8 players.</b> One is <b>Inspector Waffles</b> 🐶, the detective. Everyone else secretly plays one of 8 animal suspects. The rest are NPCs, and the detective can't tell who's who.</li>
+          <li><b>Detective:</b> 5 minutes. Walk into rooms, ask questions, then press <b>ACCUSE</b>. Two wrong guesses and the guilty go free.</li>
+          <li><b>Suspects:</b> you're locked in your room, but you'll overhear snippets of every interrogation. Pick your answers: truth, lie, dodge, or confess. Keep your secret!</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ LOBBY ============ -->
+  <section id="lobby" class="screen hidden">
+    <div class="card lobby-card">
+      <h2>Mossbottom Manor</h2>
+      <div class="code-box">
+        <span>Room code</span>
+        <b id="lobbyCode">----</b>
+        <button id="copyLink" class="btn small">🔗 Copy invite link</button>
+      </div>
+      <ul id="playerList" class="players"></ul>
+      <p id="lobbyHint" class="hint"></p>
+      <div class="row">
+        <button id="leaveBtn" class="btn ghost">Leave</button>
+        <button id="startBtn" class="btn primary big">▶ Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HUD ============ -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <span class="pill code">🏠 <b id="hudCode"></b></span>
+      <span id="hudWho" class="pill"></span>
+    </div>
+    <div id="clockBox" class="clock-box">
+      <div id="clock">5:00</div>
+      <div id="strikes"></div>
+    </div>
+    <div class="hud-right">
+      <button id="btnOverview" class="btn small round" title="Overview">🗺️</button>
+      <button id="btnLog" class="btn small round" title="Overheard">👂</button>
+      <button id="btnMute" class="btn small round" title="Sound">🔊</button>
+    </div>
+  </div>
+  <div id="banner" class="banner hidden"></div>
+
+  <aside id="logPanel" class="log-panel hidden">
+    <header><b id="logTitle">Overheard</b><button class="x" data-close="logPanel">✕</button></header>
+    <ol id="logList"></ol>
+  </aside>
+
+  <aside id="whisperPanel" class="whisper-panel hidden">
+    <header><b>🤫 Whisper to <span id="partnerName"></span></b><button class="x" data-close="whisperPanel">✕</button></header>
+    <ol id="whisperList"></ol>
+    <form id="whisperForm"><input id="whisperInput" maxlength="200" placeholder="Only your partner can read this…" autocomplete="off" /><button class="btn small">Send</button></form>
+  </aside>
+
+  <div id="panel" class="panel hidden"></div>
+
+  <!-- ============ CINEMATIC ============ -->
+  <div id="cine" class="hidden">
+    <div id="cineClock" class="cine-clock hidden"></div>
+    <div id="cineCard" class="cine-card hidden"></div>
+    <div id="cinePortraits" class="cine-portraits"></div>
+    <div id="cineTitle" class="cine-title hidden"><h1>THE LAST SOAK</h1></div>
+    <div id="cineCaption" class="cine-caption"></div>
+    <button id="skipBtn" class="btn small skip">Skip ⏭</button>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toasts"></div>
+  <div id="overlay" class="overlay hidden"><div class="card"><div class="spinner"></div><p id="overlayText">Rejoining…</p></div></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

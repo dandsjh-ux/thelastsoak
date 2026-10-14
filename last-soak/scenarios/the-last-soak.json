@@ -1,0 +1,486 @@
+{
+  "id": "the-last-soak",
+  "title": "The Last Soak",
+  "victim": { "id": "dan", "name": "Mr. Dan", "species": "capybara" },
+  "detective": { "id": "waffles", "name": "Inspector Waffles", "species": "corgi" },
+  "boss": { "id": "prickles", "name": "Chief Inspector Prickles", "species": "hedgehog" },
+
+  "rooms": {
+    "darkroom": { "name": "Darkroom", "cell": [0, 0] },
+    "bedroom":  { "name": "Lulu's Bedroom", "cell": [1, 0] },
+    "laundry":  { "name": "Laundry", "cell": [2, 0] },
+    "music":    { "name": "Music Room", "cell": [0, 1] },
+    "foyer":    { "name": "Foyer", "cell": [1, 1] },
+    "parlor":   { "name": "Parlor", "cell": [2, 1] },
+    "kitchen":  { "name": "Kitchen", "cell": [0, 2] },
+    "study":    { "name": "Study", "cell": [1, 2] },
+    "shed":     { "name": "Garden Shed", "cell": [2, 2] }
+  },
+
+  "characters": [
+    { "id": "clementine", "name": "Clementine", "species": "duck",     "title": "Head chef",            "room": "kitchen" },
+    { "id": "barnaby",    "name": "Barnaby",    "species": "badger",   "title": "Groundskeeper",        "room": "shed" },
+    { "id": "odette",     "name": "Odette",     "species": "owl",      "title": "Mr. Dan's accountant", "room": "study" },
+    { "id": "pierre",     "name": "Pierre",     "species": "frog",     "title": "Hired pianist",        "room": "music" },
+    { "id": "lulu",       "name": "Lulu",       "species": "rabbit",   "title": "Mr. Dan's niece",      "room": "bedroom" },
+    { "id": "mochi",      "name": "Mochi",      "species": "cat",      "title": "Housekeeper",          "room": "laundry" },
+    { "id": "gus",        "name": "Gus",        "species": "penguin",  "title": "Retired sea captain",  "room": "parlor" },
+    { "id": "hazel",      "name": "Hazel",      "species": "squirrel", "title": "Journalist",           "room": "darkroom" }
+  ],
+
+  "murderers": {
+    "1M": ["clementine"],
+    "2M": ["clementine", "barnaby"]
+  },
+
+  "questions": [
+    { "short": "Where were you?",   "text": "Where were you at 10:45, when Mr. Dan went under?" },
+    { "short": "See or hear anything?", "text": "Did you see or hear anything near the pond?" },
+    { "short": "The toast?",        "text": "How did you feel about Mr. Dan's toast?" },
+    { "short": "Explain the clues", "text": "We found a white feather, muddy pawprints and moonpoppy powder at the pond. Explain." },
+    { "short": "Who did it?",       "text": "Who do you think did it?" }
+  ],
+
+  "confess": "Fine! It was {me}! I {did it}!",
+  "timeout": "…uh…",
+
+  "opening": "Mossbottom Manor. Mr. Dan's birthday party. At nine o'clock he made three announcements: a cookbook, a spa, and an entirely new will. At half past ten he went down for his nightly yuzu soak. At quarter past eleven, Mochi found him. The gate was locked all night. Whoever did this is still inside.",
+
+  "toast": [
+    "His cookbook, Soak It In: Recipes by Mr. Dan, comes out next month. Every recipe in it is secretly Clementine's.",
+    "The vegetable garden will be paved over for a hot-spring spa. Barnaby has tended it for 20 years.",
+    "His new will leaves everything to the Mossbottom Pond Preservation Society. His niece Lulu gets \"my best wishes and a coupon.\""
+  ],
+
+  "clues": [
+    { "clue": "A white feather on Mr. Dan's soaking rock", "icon": "🪶" },
+    { "clue": "Muddy pawprints from the vegetable beds to the pond edge, smudged by the sprinklers", "icon": "🐾" },
+    { "clue": "A yuzu peel dusted with lilac moonpoppy powder, a sleepy spice kept in the kitchen pantry", "icon": "🍋" }
+  ],
+
+  "calls": {
+    "opening": [
+      "Waffles! It's Prickles. Mr. Dan is floating in his own pond and the mayor is chewing my ear off. We have eight guests, all locked in their rooms.",
+      "Here's what we found at the pond: a white feather on his soaking rock, muddy pawprints from the vegetable beds, and a yuzu peel covered in moonpoppy. That's sleepy-time spice, Waffles. And he didn't wake up.",
+      "You've got five minutes before their lawyers show up. Walk the manor, ask your questions, and when you're sure, hit that big ACCUSE button. Might be one culprit, might be two. Who knows!",
+      "Get it wrong and I'll give you two more minutes. Get it wrong twice and you're directing traffic at the Turnip Market for the rest of your career."
+    ],
+    "wrong": ["You arrested {name}?! Their grandmother is on my other line, crying. Two minutes, Waffles. Two. Minutes."],
+    "correct": ["One in the van! Good. But {name} didn't do it alone. Three more minutes, find the other one."],
+    "win": ["Case closed! Take tomorrow off. Actually, take the afternoon off. Don't get used to it."],
+    "loseStrikes": ["That's it. You screwed the pooch. Hope you like chasing after cars for the rest of your life, doggo."],
+    "loseTime": ["Their lawyers just walked in, Waffles. Every one of them is going home. Including whoever did it."],
+    "dropped": ["Waffles? WAFFLES? Did you seriously go get a donut? The case is dropped. Everyone goes home."]
+  },
+
+  "cinematic": [
+    { "at": 0,  "shot": "night",    "caption": "Mossbottom Manor. Mr. Dan's birthday party." },
+    { "at": 6,  "shot": "toast",    "caption": "At nine o'clock, Mr. Dan made three announcements. The launch of his new cookbook. The creation of his grand spa. And an entirely new will." },
+    { "at": 16, "shot": "soak",     "caption": "At half past ten, he went down for his nightly yuzu soak. As always.", "clock": "10:30" },
+    { "at": 22, "shot": "found",    "caption": "At quarter past eleven, Mochi found him. Very much not soaking anymore.", "clock": "11:15" },
+    { "at": 30, "shot": "lockdown", "caption": "The gate was locked all night. Whoever did this is still inside." },
+    { "at": 36, "shot": "police",   "caption": "One detective. Eight suspects. Some are players, some are not, and the detective can't tell which.", "card": "Rule 1" },
+    { "at": 42, "shot": "snippets", "caption": "Suspects: you're locked in your room, but you'll hear snippets of every interrogation. Pick your answers. Lie, dodge, or confess. Keep your secret.", "card": "Rule 2" },
+    { "at": 50, "shot": "accuse",   "caption": "Detective: five minutes. Ask questions, then press ACCUSE. Two wrong guesses and the guilty go free.", "card": "Rule 3" },
+    { "at": 56, "shot": "title",    "caption": "THE LAST SOAK", "title": true }
+  ],
+
+  "timeline": [
+    { "time": "7:00pm", "text": "Party begins.", "who": "Everyone" },
+    { "time": "9:00", "text": "Mr. Dan's toast.", "who": "Everyone" },
+    { "time": "9:10", "text": "Clementine asks Mr. Dan for credit on the cookbook; he laughs.", "who": "Clementine" },
+    { "time": "9:15", "text": "Clementine and Barnaby meet in the pantry and plan it.", "who": "Clementine, Barnaby", "v": "2M" },
+    { "time": "9:30", "text": "Lulu shouts \"You'll regret this, Uncle Dan!\" in the hallway.", "who": "Everyone heard" },
+    { "time": "10:00", "text": "Odette shuts herself in the study and starts tearing pages out of the ledgers.", "who": "Odette" },
+    { "time": "10:15", "text": "Gus and Pierre play cards in the parlor; Gus uses a marked deck.", "who": "Gus, Pierre" },
+    { "time": "10:20", "text": "Clementine brews the yuzu tea and stirs in moonpoppy.", "who": "Clementine" },
+    { "time": "10:25", "text": "Mochi, crossing the foyer with a pillow, sees Clementine carry a tea tray toward the garden door.", "who": "Mochi" },
+    { "time": "10:25", "text": "Lulu hears the garden door creak while packing stolen spoons.", "who": "Lulu" },
+    { "time": "10:30", "text": "Mr. Dan starts his soak and drinks the tea.", "who": "—" },
+    { "time": "10:35", "text": "Hazel, on the roof, photographs a blurry white bird with a tray near the pond.", "who": "Hazel" },
+    { "time": "10:40", "text": "Pierre loses his bowtie to Gus, sneaks into the pantry for cake, sees the moonpoppy tin open.", "who": "Pierre" },
+    { "time": "10:40", "text": "Barnaby digs up his hidden savings jar under the tomato bed.", "who": "Barnaby", "v": "1M" },
+    { "time": "10:40", "text": "Barnaby waits behind the hedge.", "who": "Barnaby", "v": "2M" },
+    { "time": "10:45", "text": "Mr. Dan, dozing, is shoved off his rock into the deep end by Clementine. Splash.", "who": "Odette sees it; Pierre hears it", "v": "1M" },
+    { "time": "10:45", "text": "Mr. Dan, dozing, is shoved off his rock into the deep end by Barnaby, while Clementine keeps watch. Splash.", "who": "Odette sees it; Pierre hears it", "v": "2M" },
+    { "time": "10:46", "text": "Barnaby runs to the pond edge, sees Mr. Dan face-down and a white shape waddling to the house, and flees.", "who": "Barnaby", "v": "1M" },
+    { "time": "10:46", "text": "Barnaby runs back through the vegetable beds.", "who": "Barnaby", "v": "2M" },
+    { "time": "10:50", "text": "Clementine scrubs the teacup in the kitchen while Pierre hides in the pantry; on her way in she nearly bumps into Gus at the garden door.", "who": "Pierre, Gus" },
+    { "time": "10:50", "text": "Gus hides his marked deck in the hedge by the pond and sees Mr. Dan \"napping\" in the water.", "who": "Gus" },
+    { "time": "10:50", "text": "Lulu hears the garden door creak again. At 10:55 she slips out, buries the spoons in the carrot patch and creeps back along the pond edge.", "who": "Lulu" },
+    { "time": "11:15", "text": "Mochi finds Mr. Dan.", "who": "Everyone" }
+  ],
+
+  "cards": {
+    "clementine": {
+      "role": "MURDERER",
+      "who": "A crisp white duck who has run Mr. Dan's kitchen for 12 years. Proud, precise, dangerous with a ladle.",
+      "withDan": "Every recipe in his new cookbook is yours, including your grandmother's pond-weed dumplings. At 9:10 you asked for credit. He laughed.",
+      "evening": [
+        { "time": "9:15", "text": "You found Barnaby in the pantry, as furious as you. You'd handle the tea; he'd make sure Mr. Dan went under.", "v": "2M" },
+        { "time": "10:20", "text": "You brewed Mr. Dan's nightly yuzu tea and stirred in moonpoppy from your pantry." },
+        { "time": "10:25", "text": "You carried the tray out to the pond. You heard soft paws in the foyer behind you." },
+        { "time": "10:45", "text": "Mr. Dan was dozing. You nudged him off his soaking rock into the deep end.", "v": "1M" },
+        { "time": "10:45", "text": "You kept watch at the rock while Barnaby shoved him in.", "v": "2M" },
+        { "time": "10:50", "text": "You hurried back through the garden door, nearly bowled over Gus, and scrubbed the teacup in the kitchen." }
+      ],
+      "watchOut": "You may have lost a feather on the rock. Someone saw you with the tray.",
+      "goal": "Don't get accused. Your best story is that you were cleaning the kitchen all night. That's half true.",
+      "gossip": "Pierre is always stealing cake. Mochi naps in beds she shouldn't, and you've kept her secret. Barnaby's paws are always filthy."
+    },
+    "barnaby": {
+      "1M": {
+        "role": "INNOCENT",
+        "who": "A gruff badger who has grown every vegetable at Mossbottom for 20 years.",
+        "withDan": "He's paving your vegetable beds for a spa. Everyone saw you stomp out of the toast.",
+        "evening": [
+          { "time": "9:05", "text": "You stormed off to your shed." },
+          { "time": "10:40", "text": "You crept out to dig up your secret jar of savings under the tomato bed. You're quitting tomorrow." },
+          { "time": "10:45", "text": "You heard a splash. You ran to the pond edge and saw Mr. Dan face-down, and something white waddling fast toward the house." },
+          { "time": "10:47", "text": "You panicked and ran back to your shed without helping. You washed your paws, badly." }
+        ],
+        "secret": "The savings jar, and that you were at the pond and ran.",
+        "goal": "Keep your secret and still help the detective catch the killer."
+      },
+      "2M": {
+        "role": "MURDERER",
+        "who": "A gruff badger who has grown every vegetable at Mossbottom for 20 years.",
+        "withDan": "He's paving your vegetable beds for a spa. Everyone saw you stomp out of the toast.",
+        "evening": [
+          { "time": "9:15", "text": "Clementine found you in the pantry. She'd put moonpoppy in his tea; you'd make sure he went under." },
+          { "time": "10:40", "text": "You waited behind the hedge by the tomato beds." },
+          { "time": "10:45", "text": "Clementine waved. Mr. Dan was dozing. You gave him one firm shove into the deep end." },
+          { "time": "10:46", "text": "You ran back through the vegetable beds and scrubbed your paws in the shed." }
+        ],
+        "watchOut": "Your pawprints run from the vegetable beds to the pond. Say you were digging this afternoon; you always are.",
+        "goal": "Don't get accused. Use the whisper chat to keep your story straight with Clementine."
+      }
+    },
+    "odette": {
+      "role": "INNOCENT",
+      "who": "A tawny owl who speaks in sub-clauses and bills by the minute.",
+      "withDan": "You've been skimming bells from his accounts for years. With everything going to the Pond Society, their auditors will look at the books.",
+      "evening": [
+        { "time": "10:00", "text": "You locked yourself in the study and started tearing pages out of the ledgers." },
+        { "time": "10:45", "text": "From the study window you saw a white figure on the soaking rock, then a splash.", "v": "1M" },
+        { "time": "10:45", "text": "From the study window you saw a white figure and a big stripy one by the rock, then a splash.", "v": "2M" }
+      ],
+      "secret": "The skimming, and that you were awake in the study tearing out pages.",
+      "goal": "Keep your secret. You saw the killer; decide whether that's worth the risk of explaining why you were awake."
+    },
+    "pierre": {
+      "role": "INNOCENT",
+      "who": "A dramatic frog in a velvet jacket. Lives on snacks.",
+      "withDan": "He owes you three months' pay. You'll never see it now.",
+      "evening": [
+        { "time": "10:15", "text": "Cards with Gus in the parlor. He won every hand, and then your bowtie. He's cheating, you're sure." },
+        { "time": "10:40", "text": "You snuck into the kitchen pantry for cake. The moonpoppy tin was open and the teapot was warm." },
+        { "time": "10:45", "text": "Through the kitchen window you heard a splash." },
+        { "time": "10:50", "text": "Clementine came in from the garden. You hid behind the flour and watched her scrub a teacup very, very hard." }
+      ],
+      "secret": "You were in the pantry eating most of the birthday cake.",
+      "goal": "Keep your secret. You know a lot about Clementine; saying so means admitting where you were."
+    },
+    "lulu": {
+      "role": "INNOCENT",
+      "who": "A fluffy, dramatic rabbit who expected to inherit everything.",
+      "withDan": "He cut you out of the will at the toast. At 9:30 you shouted \"You'll regret this, Uncle Dan!\" Everyone heard.",
+      "evening": [
+        { "time": "9:45", "text": "You packed Mr. Dan's silver spoons into your suitcase to sell." },
+        { "time": "10:25 & 10:50", "text": "You heard the garden door creak. At 10:55, worried about bag searches, you slipped out, buried the spoons in the carrot patch and crept back along the pond edge. Too dark to see anything." }
+      ],
+      "secret": "The spoons, and that you were out in the garden burying them. Some of those muddy prints are yours.",
+      "goal": "Keep your secret. You look the most guilty and you're not; the creaking door is your best lead."
+    },
+    "mochi": {
+      "role": "INNOCENT",
+      "who": "A sleepy calico who is supposed to be working.",
+      "withDan": "He was always kind to you. No motive at all.",
+      "evening": [
+        { "time": "10:25", "text": "Crossing the foyer with a pillow to nap in an empty guest room, you saw Clementine carry a tea tray toward the garden door." },
+        { "time": "10:30–11:10", "text": "You napped." },
+        { "time": "11:15", "text": "You went to tidy the garden and found Mr. Dan. You screamed." }
+      ],
+      "secret": "You nap in guests' beds. Clementine caught you once and kept quiet. You owe her.",
+      "goal": "Keep your secret. Do you protect Clementine, or tell the detective about the tray?"
+    },
+    "gus": {
+      "role": "INNOCENT",
+      "who": "A barrel-chested penguin in a captain's hat. Mr. Dan's oldest friend.",
+      "withDan": "He found out you cheat at your weekly card game and threatened to tell everyone.",
+      "evening": [
+        { "time": "10:15", "text": "Cards with Pierre, using your marked deck. You won his bowtie." },
+        { "time": "10:50", "text": "You slipped out the garden door to hide the marked deck in the hedge by the pond. Clementine nearly knocked you over coming back in, in a hurry." },
+        { "time": "10:51", "text": "You saw Mr. Dan lying still in the water and assumed he was napping." }
+      ],
+      "secret": "The marked cards, and that you were by the pond.",
+      "goal": "Keep your secret. You have white belly feathers, so that feather could look very bad for you."
+    },
+    "hazel": {
+      "role": "INNOCENT",
+      "who": "A twitchy squirrel reporter for the Mossbottom Gazette.",
+      "withDan": "You're secretly writing a tell-all about him.",
+      "evening": [
+        { "time": "10:30", "text": "You climbed onto the roof for a moonlit shot of the garden." },
+        { "time": "10:35", "text": "Your photo shows a blurry white bird with a tray near the pond. That's a scoop worth a lot of bells." },
+        { "time": "10:40–11:15", "text": "Developing photos in your darkroom." }
+      ],
+      "secret": "The tell-all, and that you were on the roof.",
+      "goal": "Keep your secret. Your photo could solve the case, but you'd rather sell it."
+    }
+  },
+
+  "dialogue": {
+    "clementine": [
+      [
+        { "tags": "L", "line": "In my {kitchen}, all night. Pots don't scrub themselves, detective." },
+        { "tags": "T", "line": "I brought Mr. Dan his {tea} at the {pond}, like every night. Then back to the kitchen." },
+        { "tags": "D", "line": "Do you know how many {dishes} a birthday makes?" }
+      ],
+      [
+        { "tags": "L", "line": "Nothing. The kitchen {window} was all steamed up." },
+        { "tags": "L", "line": "I saw {Barnaby} stomping around the {garden}." },
+        { "tags": "D", "line": "I listen to ladles, detective. Not ponds." }
+      ],
+      [
+        { "tags": "T", "line": "He {stole my recipes}. Every one. Put his name on them." },
+        { "tags": "L", "line": "Lovely toast. I'm so {happy} for him." },
+        { "tags": "D", "line": "The {cake} was perfect. That's what matters." }
+      ],
+      [
+        { "tags": "L", "line": "Feathers? Ask the {penguin}. Paws? Ask the {badger}." },
+        { "tags": "T", "line": "Moonpoppy is from my {pantry}. Anyone could walk in." },
+        { "tags": "D", "line": "Half this house {moults} in summer." }
+      ],
+      [
+        { "tags": "L", "line": "{Barnaby}. You've seen his paws." },
+        { "tags": "L", "line": "{Lulu}. She screamed at him an hour before." },
+        { "tags": "D", "line": "I'm a chef, not a {detective}." }
+      ]
+    ],
+    "barnaby": {
+      "1M": [
+        [
+          { "tags": "★ L", "line": "In my {shed}, sharpening shears. Didn't leave." },
+          { "tags": "S T", "line": "Out by the {tomato beds}, digging. Personal business." },
+          { "tags": "D", "line": "Where I always am. With my {vegetables}." }
+        ],
+        [
+          { "tags": "★ L", "line": "Didn't see a thing. Shed's got no windows." },
+          { "tags": "S T", "line": "I heard a {splash}, ran over, and saw something {white} waddle back to the house." },
+          { "tags": "D", "line": "Frogs croak. Ponds splash. That's nature." }
+        ],
+        [
+          { "tags": "★ T", "line": "He was paving my {vegetables}. Twenty years of {carrots}." },
+          { "tags": "L", "line": "Didn't bother me. Spas are... nice." },
+          { "tags": "D", "line": "I left before the {cake}." }
+        ],
+        [
+          { "tags": "★ T", "line": "The {pawprints} are mine. I'm a gardener. I'm always muddy." },
+          { "tags": "S T", "line": "They go to the edge because I {saw him floating}. I panicked." },
+          { "tags": "D", "line": "Lots of folk have muddy paws in this house." }
+        ],
+        [
+          { "tags": "★ L", "line": "That {Lulu}. Heard her yelling." },
+          { "tags": "T", "line": "Someone with {white feathers}. That's all I'll say." },
+          { "tags": "D", "line": "Not my job to point paws." }
+        ]
+      ],
+      "2M": [
+        [
+          { "tags": "L", "line": "In my {shed} all night." },
+          { "tags": "L", "line": "{Digging} in the garden. Where I always am." },
+          { "tags": "D", "line": "Ask my {tomatoes}." }
+        ],
+        [
+          { "tags": "T", "line": "I saw {Gus} waddling out by the {hedge}." },
+          { "tags": "L", "line": "Nothing. Too dark." },
+          { "tags": "D", "line": "I mind my own {beds}." }
+        ],
+        [
+          { "tags": "T", "line": "He wanted to pave my {garden}. I was {angry}." },
+          { "tags": "L", "line": "Water under the bridge." },
+          { "tags": "D", "line": "Toasts make me sleepy." }
+        ],
+        [
+          { "tags": "L", "line": "Those prints are from this {afternoon}. I was weeding." },
+          { "tags": "L", "line": "White feathers? Look at the {owl}." },
+          { "tags": "D", "line": "Mud's mud." }
+        ],
+        [
+          { "tags": "L", "line": "{Gus}. He was out by the pond." },
+          { "tags": "L", "line": "{Pierre}. Frogs love ponds." },
+          { "tags": "D", "line": "Not my place to say." }
+        ]
+      ]
+    },
+    "odette": [
+      [
+        { "tags": "★ L", "line": "Asleep in the {study}. I retire at ten sharp." },
+        { "tags": "S T", "line": "In the study, {tearing pages} out of Mr. Dan's ledgers." },
+        { "tags": "D", "line": "Precisely where a respectable owl should be." }
+      ],
+      [
+        { "tags": "★ L", "line": "My curtains were drawn. I saw nothing." },
+        { "tags": "T", "line": {
+          "1M": "From my window: a {white figure} on the {soaking rock}. Then a {splash}.",
+          "2M": "Two figures by the rock. One {white}, one big and {stripy}. Then a {splash}."
+        } },
+        { "tags": "D", "line": "Owls see a great deal, detective. We rarely say it." }
+      ],
+      [
+        { "tags": "★ L", "line": "A perfectly reasonable {will}. Very charitable." },
+        { "tags": "S T", "line": "The Pond Society's {auditors} will go through his books now. I'm... concerned." },
+        { "tags": "D", "line": "I don't discuss {clients}." }
+      ],
+      [
+        { "tags": "★ T", "line": "My feathers are {brown}, detective. Look closely." },
+        { "tags": "L", "line": "Moonpoppy? Never heard of it." },
+        { "tags": "D", "line": "I bill by the hour for questions like that." }
+      ],
+      [
+        { "tags": "★ D", "line": "I won't speculate without {documents}." },
+        { "tags": "T", "line": {
+          "1M": "Someone with {white feathers}.",
+          "2M": "A {white} bird and a big {stripy} creature."
+        } },
+        { "tags": "L", "line": "The {niece}. Follow the money." }
+      ]
+    ],
+    "pierre": [
+      [
+        { "tags": "★ L", "line": "Playing {cards} with Gus, all night." },
+        { "tags": "S T", "line": "In the {pantry}... eating {cake}. A lot of cake." },
+        { "tags": "D", "line": "Music never sleeps, monsieur." }
+      ],
+      [
+        { "tags": "★ L", "line": "Nothing. Gus never stopped talking." },
+        { "tags": "S T", "line": "From the pantry I heard a {splash}. Then {Clementine} came in and scrubbed a {teacup} very hard." },
+        { "tags": "D", "line": "Ponds splash. It's what they do." }
+      ],
+      [
+        { "tags": "★ T", "line": "He owed me {three months} of pay. Now I'll never see it." },
+        { "tags": "L", "line": "A beautiful toast. I wept." },
+        { "tags": "D", "line": "I was {playing piano} during it." }
+      ],
+      [
+        { "tags": "★ D", "line": "I have no feathers and no paws worth mentioning." },
+        { "tags": "S T", "line": "The {moonpoppy} tin was open in the kitchen. I saw it." },
+        { "tags": "L", "line": "Feathers... the {owl} sheds everywhere." }
+      ],
+      [
+        { "tags": "★ L", "line": "The {captain}. He cheats at cards, he'd cheat at anything." },
+        { "tags": "T", "line": "Ask the {chef} about her {teacups}." },
+        { "tags": "D", "line": "I only accuse wrong notes." }
+      ]
+    ],
+    "lulu": [
+      [
+        { "tags": "★ T", "line": "In my {room}, all night. I was too upset to come out." },
+        { "tags": "S T", "line": "Packing... some of Uncle Dan's {silver spoons}. Into my suitcase." },
+        { "tags": "D", "line": "Is it a crime to stay in your room?" }
+      ],
+      [
+        { "tags": "★ T", "line": "The {garden door} creaked twice. Around {half ten}, and again before {eleven}." },
+        { "tags": "L", "line": "Nothing. I had headphones on." },
+        { "tags": "D", "line": "My ears are big, not magic." }
+      ],
+      [
+        { "tags": "★ T", "line": "He {cut me out} of the will! For a {pond society}!" },
+        { "tags": "L", "line": "I'm not upset. Really." },
+        { "tags": "D", "line": "Everyone heard what I said. I'm not saying it again." }
+      ],
+      [
+        { "tags": "★ L", "line": "No feathers, no mud. Just {fluff}." },
+        { "tags": "S T", "line": "Those big prints might be {mine}. I {buried} something in the {carrot patch}." },
+        { "tags": "D", "line": "Moon-what?" }
+      ],
+      [
+        { "tags": "★ L", "line": "{Barnaby}. He hated the spa idea." },
+        { "tags": "T", "line": "Whoever used the {garden door}." },
+        { "tags": "D", "line": "I'm a suspect, not a {snitch}." }
+      ]
+    ],
+    "mochi": [
+      [
+        { "tags": "★ L", "line": "Folding {towels} in the laundry. Very busy." },
+        { "tags": "S T", "line": "Napping in an empty {guest room}. Please don't tell." },
+        { "tags": "D", "line": "A housekeeper is always somewhere." }
+      ],
+      [
+        { "tags": "★ L", "line": "No. Nothing. Nobody." },
+        { "tags": "T", "line": "At {half ten}, {Clementine} carried a {tray} out to the garden." },
+        { "tags": "D", "line": "I found him. That's all I saw. It was awful." }
+      ],
+      [
+        { "tags": "★ T", "line": "He was always kind to me. I {didn't mind} the toast." },
+        { "tags": "L", "line": "I never listen to toasts. Too busy." },
+        { "tags": "D", "line": "I was {cleaning cake} off the ceiling." }
+      ],
+      [
+        { "tags": "★ D", "line": "Feathers and mud... that's my Tuesday, detective." },
+        { "tags": "T", "line": "Moonpoppy lives in {Clementine's pantry}. Only she uses it." },
+        { "tags": "T", "line": "Some of those prints are {mine}. I ran to the {pond} when I found him." }
+      ],
+      [
+        { "tags": "★ D", "line": "I really couldn't say." },
+        { "tags": "T", "line": "Ask {Clementine} where she took that {tray}." },
+        { "tags": "L", "line": "The {frog}. He's always in the kitchen." }
+      ]
+    ],
+    "gus": [
+      [
+        { "tags": "★ L", "line": "In the parlor with the frog, playing {cards} till eleven." },
+        { "tags": "S T", "line": "I stepped out to the {hedge} to... bury my {marked cards}." },
+        { "tags": "D", "line": "A captain never reveals his {heading}." }
+      ],
+      [
+        { "tags": "★ L", "line": "Calm seas. Nothing at all." },
+        { "tags": "S T", "line": "I saw Dan {floating} at ten fifty. I thought he was {napping}." },
+        { "tags": "D", "line": "Too foggy to tell, matey." }
+      ],
+      [
+        { "tags": "★ L", "line": "Good old Dan. Generous to a fault." },
+        { "tags": "S T", "line": "He threatened to tell everyone I {cheat} at cards." },
+        { "tags": "D", "line": "I sleep through toasts. Old sailor habit." }
+      ],
+      [
+        { "tags": "★ L", "line": "I don't shed. I'm {waterproof}." },
+        { "tags": "S T", "line": "That feather might be {mine}. I was out by the {hedge}." },
+        { "tags": "D", "line": "Half this house is birds, detective." }
+      ],
+      [
+        { "tags": "★ L", "line": "The {badger}. Look at his paws!" },
+        { "tags": "S T", "line": "The {chef} nearly knocked me over at the {garden door}." },
+        { "tags": "D", "line": "Not my watch." }
+      ]
+    ],
+    "hazel": [
+      [
+        { "tags": "★ L", "line": "Developing {photos} in my darkroom." },
+        { "tags": "S T", "line": "On the {roof}, taking garden shots for the paper." },
+        { "tags": "D", "line": "Journalists don't give alibis. We ask for them." }
+      ],
+      [
+        { "tags": "★ L", "line": "Nothing worth printing." },
+        { "tags": "S T", "line": "I've got a {photo} from {ten thirty-five}: a {white bird} with a {tray} by the pond." },
+        { "tags": "D", "line": "Depends. What's it worth to you?" }
+      ],
+      [
+        { "tags": "★ T", "line": "Great {headline}. Bad news for everyone else." },
+        { "tags": "S T", "line": "I'm writing a {tell-all}. That toast was chapter one." },
+        { "tags": "D", "line": "No comment." }
+      ],
+      [
+        { "tags": "★ D", "line": "Fascinating. Can I quote you?" },
+        { "tags": "T", "line": "Moonpoppy makes you {sleepy}. In a pond, that's bad." },
+        { "tags": "L", "line": "Feathers? The {penguin} was outside, I'd bet." }
+      ],
+      [
+        { "tags": "★ D", "line": "You'll read it in the {Gazette}." },
+        { "tags": "T", "line": "Check the {birds}. One of them is lying." },
+        { "tags": "L", "line": "{Lulu}. Disinherited nieces sell papers." }
+      ]
+    ]
+  }
+}
