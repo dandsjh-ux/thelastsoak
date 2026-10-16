@@ -11,6 +11,15 @@ const shown = (o) => {
   return true;
 };
 const OVERVIEW = { target: new THREE.Vector3(2.5, 0, 5), zoom: 1 };
+// Where everyone stands inside a room, as offsets from its centre (x east, z south). The furniture keeps
+// these spots and the centre cross clear (see manor.js), so nobody walks through a table.
+export const STAND = {
+  suspect: new THREE.Vector3(-1.4, 0, 1.3),
+  detective: new THREE.Vector3(1.4, 0, 1.3),
+  assistant: new THREE.Vector3(0.4, 0, 2.3),
+  foyerDetective: new THREE.Vector3(0.3, 0, 0.4),
+  foyerAssistant: new THREE.Vector3(1.2, 0, 1.4),
+};
 
 export class World {
   constructor(canvas, meta) {
@@ -51,7 +60,7 @@ export class World {
     for (const c of meta.characters) {
       const k = new Critter(c.id);
       const room = this.rooms[c.room];
-      const pos = room.center.clone().add(new THREE.Vector3(-0.5, 0, -0.3));
+      const pos = room.center.clone().add(STAND.suspect);
       k.group.position.copy(pos);
       k.group.rotation.y = FACE_CAMERA;
       this.home[c.id] = pos;
@@ -101,12 +110,12 @@ export class World {
 
   detSpot(roomId) {
     const c = this.rooms[roomId].center;
-    return roomId === 'foyer' ? c.clone().add(new THREE.Vector3(0.3, 0, 0.4)) : c.clone().add(new THREE.Vector3(1.5, 0, 0.3));
+    return c.clone().add(roomId === 'foyer' ? STAND.foyerDetective : STAND.detective);
   }
 
   assistSpot(roomId) {
     const c = this.rooms[roomId].center;
-    return roomId === 'foyer' ? c.clone().add(new THREE.Vector3(1.2, 0, 1.4)) : c.clone().add(new THREE.Vector3(1.1, 0, 1.5));
+    return c.clone().add(roomId === 'foyer' ? STAND.foyerAssistant : STAND.assistant);
   }
 
   /** The police car parked on the drive, nose toward the porch. */
@@ -245,24 +254,29 @@ export class World {
 
   // ───────────────────────── cast control ─────────────────────────
 
+  /** Room-to-room route: from wherever we stand to the room centre, then centre → doorway → centre…, then the final spot. */
+  route(from, to, start, end) {
+    const cells = cellPath(this.rooms[from].cell, this.rooms[to].cell);
+    const at = (c) => {
+      const p = cellCenter(c);
+      return new THREE.Vector3(p.x, FLOOR_Y, p.z);
+    };
+    const pts = [start.clone(), at(cells[0])];
+    for (let i = 1; i < cells.length; i++) pts.push(at(cells[i - 1]).add(at(cells[i])).multiplyScalar(0.5), at(cells[i])); // doorway, centre
+    pts.push(end);
+    return pts;
+  }
+
   /** Walk the corgi along the hallway grid; finishes by arriveAt (local ms). */
   moveDetective(to, durationMs) {
     const from = this.detLoc;
     this.detLoc = to;
-    const cells = cellPath(this.rooms[from].cell, this.rooms[to].cell);
-    const pts = [this.detective.group.position.clone()];
-    for (let i = 1; i < cells.length; i++) {
-      const a = cellCenter(cells[i - 1]);
-      const b = cellCenter(cells[i]);
-      pts.push(new THREE.Vector3((a.x + b.x) / 2, FLOOR_Y, (a.z + b.z) / 2)); // doorway
-      if (i < cells.length - 1) pts.push(new THREE.Vector3(b.x, FLOOR_Y, b.z));
-    }
-    pts.push(this.detSpot(to));
+    const pts = this.route(from, to, this.detective.group.position, this.detSpot(to));
     const dur = Math.max(300, durationMs);
     this.walk = this.makeWalk(pts, performance.now(), dur);
     this.detective.walking = true;
     // The assistant takes the same route a moment later and stops at their own spot.
-    const ptsA = [this.assistant.group.position.clone(), ...pts.slice(1, -1), this.assistSpot(to)];
+    const ptsA = this.route(from, to, this.assistant.group.position, this.assistSpot(to));
     this.walkA = this.makeWalk(ptsA, performance.now() + 250, dur);
     this.assistant.walking = true;
   }

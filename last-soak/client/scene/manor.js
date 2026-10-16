@@ -50,6 +50,7 @@ function wallpaper(color) {
 }
 
 /** A wall segment along x (dir 'x') or z (dir 'z'), base at FLOOR_Y. */
+const WALLS = [];
 function wallSeg(g, dir, cx, cz, len, height, color) {
   const tex = wallpaper(color);
   tex.repeat.set(len / 1.5, 1);
@@ -57,6 +58,7 @@ function wallSeg(g, dir, cx, cz, len, height, color) {
   const d = dir === 'x' ? 0.24 : len;
   const m = mesh(G.box(w, height, d, 0.06), new THREE.MeshToonMaterial({ color: '#ffffff', map: tex, gradientMap: toon('#fff').gradientMap }), cx, FLOOR_Y + height / 2, cz, { receive: true });
   g.add(m);
+  WALLS.push(m);
   g.add(block(w + 0.06, 0.12, d + 0.06, '#fff8ee', cx, FLOOR_Y + height, cz, { radius: 0.05 }));
   g.add(block(w + 0.04, 0.16, d + 0.04, '#8a6a58', cx, FLOOR_Y, cz, { radius: 0.03 }));
   return m;
@@ -78,20 +80,24 @@ function lampGlow(g, x, y, z, color = '#ffd27a', size = 0.16) {
 }
 
 // ───────────────────────── furniture ─────────────────────────
+// Keep-clear rule (checked by the walk test): nothing at body height on the room's centre cross
+// (|dx| or |dz| < 0.85 from the centre), where the detective walks between doors, or in the south
+// half where the suspect (-1.4, +1.3), detective (+1.4, +1.3) and assistant (+0.4, +2.3) stand.
+// Furniture lives in the two north quadrants and against the west wall.
 
 const FURNITURE = {
   kitchen(g, x, z) {
     const n = z - HALF + 0.6;
-    g.add(block(2.6, 0.9, 0.9, '#f7c98b', x + 0.6, FLOOR_Y, n));
-    g.add(block(2.7, 0.1, 1.0, '#fffaf2', x + 0.6, FLOOR_Y + 0.9, n));
-    g.add(block(1.0, 0.95, 0.9, '#e7e2f2', x - 1.3, FLOOR_Y, n));
-    for (const dx of [-0.22, 0.22]) g.add(mesh(G.cyl(0.14, 0.14, 0.03), '#3b3a44', x - 1.3 + dx, FLOOR_Y + 0.97, n));
-    g.add(mesh(G.cyl(0.2, 0.18, 0.28), '#e05a4f', x - 1.3 + 0.22, FLOOR_Y + 1.12, n));
-    const pot = mesh(G.sphere(0.17, 14, 10), '#ffffff', x + 0.2, FLOOR_Y + 1.12, n, { s: [1, 0.85, 1] });
+    g.add(block(1.9, 0.9, 0.9, '#f7c98b', x + 1.95, FLOOR_Y, n));
+    g.add(block(2.0, 0.1, 1.0, '#fffaf2', x + 1.95, FLOOR_Y + 0.9, n));
+    g.add(block(1.0, 0.95, 0.9, '#e7e2f2', x - 1.5, FLOOR_Y, n));
+    for (const dx of [-0.22, 0.22]) g.add(mesh(G.cyl(0.14, 0.14, 0.03), '#3b3a44', x - 1.5 + dx, FLOOR_Y + 0.97, n));
+    g.add(mesh(G.cyl(0.2, 0.18, 0.28), '#e05a4f', x - 1.5 + 0.22, FLOOR_Y + 1.12, n));
+    const pot = mesh(G.sphere(0.17, 14, 10), '#ffffff', x + 1.3, FLOOR_Y + 1.12, n, { s: [1, 0.85, 1] });
     pot.add(mesh(G.cyl(0.03, 0.05, 0.2), '#ffffff', 0.18, 0.02, 0, { r: [0, 0, -1] }));
     pot.add(mesh(G.sphere(0.04, 8, 6), '#ffd23f', 0, 0.17, 0));
     g.add(pot);
-    for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.11, 0.11, 0.18), ['#ffd23f', '#9fd77a', '#ff9f80'][i], x + 0.8 + i * 0.3, FLOOR_Y + 1.04, n));
+    for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.11, 0.11, 0.18), ['#ffd23f', '#9fd77a', '#ff9f80'][i], x + 1.9 + i * 0.3, FLOOR_Y + 1.04, n));
     // pantry shelf on the west wall, with the lilac moonpoppy tin
     const w = x - HALF + 0.45;
     g.add(block(0.2, 2.0, 1.8, '#a9774f', w - 0.15, FLOOR_Y, z + 0.6));
@@ -99,19 +105,21 @@ const FURNITURE = {
     for (const [i, c] of ['#b9a3ff', '#ffd23f', '#ff9f80', '#ffffff', '#9fd77a', '#f6aaa4'].entries()) {
       g.add(mesh(G.cyl(0.12, 0.12, 0.28), c, w + 0.1, FLOOR_Y + 0.42 + (i % 3) * 0.65, z + 0.05 + i * 0.25));
     }
-    g.add(block(0.9, 0.7, 0.9, '#f7c98b', x + 0.9, FLOOR_Y, z + 1.4));
+    g.add(block(0.9, 0.7, 0.9, '#f7c98b', x + 2.45, FLOOR_Y, z - 0.2));
   },
   study(g, x, z) {
     const n = z - HALF + 0.4;
-    g.add(block(2.6, 2.1, 0.5, '#7a5236', x + 0.3, FLOOR_Y, n));
+    g.add(block(2.0, 2.1, 0.5, '#7a5236', x + 1.9, FLOOR_Y, n));
     const cols = ['#e05a4f', '#3f6e8c', '#f2c94c', '#6f9a5a', '#b9a3ff'];
-    for (let r = 0; r < 3; r++) for (let i = 0; i < 7; i++) {
-      g.add(block(0.22, 0.45, 0.32, cols[(i + r * 2) % cols.length], x + 0.3 - 1.0 + i * 0.32, FLOOR_Y + 0.15 + r * 0.66, n + 0.12, { radius: 0.03 }));
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 6; i++) {
+      g.add(block(0.22, 0.45, 0.32, cols[(i + r * 2) % cols.length], x + 1.1 + i * 0.32, FLOOR_Y + 0.15 + r * 0.66, n + 0.12, { radius: 0.03 }));
     }
-    g.add(block(1.7, 0.75, 0.9, '#9a6a42', x - 1.3, FLOOR_Y, z + 0.3));
-    g.add(block(0.5, 0.12, 0.6, '#3f6e8c', x - 1.5, FLOOR_Y + 0.75, z + 0.3, { radius: 0.03 }));
-    lampGlow(g, x - 0.8, FLOOR_Y + 1.15, z + 0.1, '#bff5a8', 0.13);
-    g.add(mesh(G.cyl(0.03, 0.03, 0.4), '#c99a2e', x - 0.8, FLOOR_Y + 0.95, z + 0.1));
+    // desk tucked into the north-west corner
+    const dx = x - 1.9, dz = z - 1.4;
+    g.add(block(1.7, 0.75, 0.9, '#9a6a42', dx, FLOOR_Y, dz));
+    g.add(block(0.5, 0.12, 0.6, '#3f6e8c', dx - 0.2, FLOOR_Y + 0.75, dz, { radius: 0.03 }));
+    lampGlow(g, dx + 0.5, FLOOR_Y + 1.15, dz - 0.2, '#bff5a8', 0.13);
+    g.add(mesh(G.cyl(0.03, 0.03, 0.4), '#c99a2e', dx + 0.5, FLOOR_Y + 0.95, dz - 0.2));
     // torn ledger pages on the floor
     for (let i = 0; i < 7; i++) {
       g.add(mesh(G.box(0.32, 0.02, 0.24, 0.005), '#fffaf2', x - 0.6 + Math.sin(i * 2.3) * 1.2, FLOOR_Y + 0.02, z + 1.0 + Math.cos(i * 1.7) * 0.8, { r: [0, i, 0] }));
@@ -119,29 +127,29 @@ const FURNITURE = {
   },
   shed(g, x, z) {
     const n = z - HALF + 0.55;
-    g.add(block(2.4, 0.85, 0.8, '#a9774f', x + 0.4, FLOOR_Y, n));
-    for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.18, 0.13, 0.3), '#d9774b', x - 0.3 + i * 0.5, FLOOR_Y + 1.0, n));
-    for (let i = 0; i < 3; i++) g.add(mesh(G.sphere(0.12, 10, 8), '#6f9a5a', x - 0.3 + i * 0.5, FLOOR_Y + 1.2, n));
+    g.add(block(1.9, 0.85, 0.8, '#a9774f', x + 1.9, FLOOR_Y, n));
+    for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.18, 0.13, 0.3), '#d9774b', x + 1.4 + i * 0.5, FLOOR_Y + 1.0, n));
+    for (let i = 0; i < 3; i++) g.add(mesh(G.sphere(0.12, 10, 8), '#6f9a5a', x + 1.4 + i * 0.5, FLOOR_Y + 1.2, n));
     const w = x - HALF + 0.4;
     g.add(mesh(G.cyl(0.04, 0.04, 1.4), '#8a5d3b', w + 0.2, FLOOR_Y + 0.9, z - 0.8, { r: [0, 0, 0.2] }));
     g.add(mesh(G.box(0.3, 0.38, 0.05, 0.03), '#9aa0ad', w + 0.07, FLOOR_Y + 0.25, z - 0.8, { r: [0, 0, 0.2] }));
-    for (let i = 0; i < 2; i++) g.add(mesh(G.sphere(0.4, 14, 10), '#e6d3a8', w + 0.4, FLOOR_Y + 0.35, z + 0.4 + i * 0.75, { s: [1, 0.85, 0.9] }));
-    g.add(mesh(G.cyl(0.22, 0.25, 0.4), '#4fb3a9', x + 1.4, FLOOR_Y + 0.2, z + 1.2));
+    for (const [sx, sz] of [[x - 2.2, z - 1.9], [x - 1.35, z - 2.2]]) g.add(mesh(G.sphere(0.4, 14, 10), '#e6d3a8', sx, FLOOR_Y + 0.35, sz, { s: [1, 0.85, 0.9] }));
+    g.add(mesh(G.cyl(0.22, 0.25, 0.4), '#4fb3a9', x + 2.5, FLOOR_Y + 0.2, z + 2.4));
   },
   music(g, x, z) {
-    const px = x + 0.2, pz = z - 1.0;
+    const px = x - 1.85, pz = z - 1.85; // grand piano in the north-west corner
     g.add(block(2.0, 0.55, 1.3, '#2b2233', px, FLOOR_Y + 0.55, pz, { radius: 0.2 }));
     for (const [dx, dz] of [[-0.8, -0.5], [0.8, -0.5], [0, 0.5]]) g.add(mesh(G.cyl(0.07, 0.07, 0.55), '#2b2233', px + dx, FLOOR_Y + 0.28, pz + dz));
     g.add(mesh(G.box(1.9, 0.05, 1.2, 0.03), '#2b2233', px, FLOOR_Y + 1.35, pz - 0.35, { r: [0.6, 0, 0] }));
     g.add(block(1.6, 0.06, 0.25, '#fffaf2', px, FLOOR_Y + 1.1, pz + 0.62, { radius: 0.02 }));
     for (let i = 0; i < 7; i++) g.add(block(0.07, 0.04, 0.14, '#2b2233', px - 0.6 + i * 0.2, FLOOR_Y + 1.14, pz + 0.58, { radius: 0.01 }));
     g.add(block(1.0, 0.45, 0.4, '#7b4fa0', px, FLOOR_Y, pz + 1.15));
-    const w = x - HALF + 0.5;
-    g.add(mesh(G.cyl(0.03, 0.03, 1.1), '#3b3a44', w + 0.5, FLOOR_Y + 0.55, z + 1.2));
-    g.add(mesh(G.box(0.5, 0.36, 0.04, 0.02), '#fffaf2', w + 0.5, FLOOR_Y + 1.2, z + 1.2, { r: [-0.3, 0.6, 0] }));
+    // music stand in the south-west corner
+    g.add(mesh(G.cyl(0.03, 0.03, 1.1), '#3b3a44', x - 2.45, FLOOR_Y + 0.55, z + 2.35));
+    g.add(mesh(G.box(0.5, 0.36, 0.04, 0.02), '#fffaf2', x - 2.45, FLOOR_Y + 1.2, z + 2.35, { r: [-0.3, 0.6, 0] }));
     // half-eaten slice of cake
-    g.add(mesh(G.cyl(0.25, 0.25, 0.04), '#ffffff', x + 1.6, FLOOR_Y + 0.02, z + 0.8));
-    g.add(mesh(G.cyl(0.18, 0.18, 0.18, 3), '#ffe3ef', x + 1.6, FLOOR_Y + 0.13, z + 0.8));
+    g.add(mesh(G.cyl(0.25, 0.25, 0.04), '#ffffff', x + 2.3, FLOOR_Y + 0.02, z - 2.2));
+    g.add(mesh(G.cyl(0.18, 0.18, 0.18, 3), '#ffe3ef', x + 2.3, FLOOR_Y + 0.13, z - 2.2));
   },
   parlor(g, x, z) {
     g.add(mesh(G.cyl(1.7, 1.7, 0.03, 32), '#d9574b', x, FLOOR_Y + 0.02, z, { receive: true, s: [1, 1, 0.8] }));
@@ -152,7 +160,7 @@ const FURNITURE = {
     g.add(block(1.2, 0.9, 0.3, '#e05a4f', ax, FLOOR_Y + 0.4, az - 0.4, { radius: 0.15 }));
     for (const s of [-1, 1]) g.add(block(0.25, 0.75, 1.0, '#c94b42', ax + s * 0.55, FLOOR_Y, az, { radius: 0.12 }));
     // card table
-    const tx = x + 1.2, tz = z - 1.2;
+    const tx = x + 1.9, tz = z - 1.9;
     g.add(mesh(G.cyl(0.75, 0.75, 0.08, 24), '#3f8f5a', tx, FLOOR_Y + 0.75, tz));
     g.add(mesh(G.cyl(0.08, 0.15, 0.75), '#7a5236', tx, FLOOR_Y + 0.37, tz));
     for (let i = 0; i < 5; i++) g.add(mesh(G.box(0.18, 0.015, 0.26, 0.01), i === 2 ? '#e05a4f' : '#fffaf2', tx - 0.3 + i * 0.15, FLOOR_Y + 0.8, tz + Math.sin(i) * 0.1, { r: [0, i * 0.3, 0] }));
@@ -172,13 +180,13 @@ const FURNITURE = {
     g.add(mesh(G.cone(0.3, 0.25, 12), '#3b3a44', x - HALF + 0.5, FLOOR_Y + 2.38, z - HALF + 0.5));
   },
   bedroom(g, x, z) {
-    const bx = x - 1.2, bz = z - 1.2;
+    const bx = x - 1.6, bz = z - 1.4;
     g.add(block(1.6, 0.5, 2.4, '#c98f5a', bx, FLOOR_Y, bz, { radius: 0.12 }));
     g.add(block(1.5, 0.22, 2.0, '#ff9fc6', bx, FLOOR_Y + 0.5, bz + 0.15, { radius: 0.1 }));
     g.add(block(1.2, 0.22, 0.45, '#ffffff', bx, FLOOR_Y + 0.55, bz - 0.85, { radius: 0.1 }));
     g.add(block(1.7, 1.2, 0.2, '#c98f5a', bx, FLOOR_Y, bz - 1.2, { radius: 0.1 }));
     // half-packed suitcase (spoons!)
-    const sx = x + 1.2, sz = z - 1.5;
+    const sx = x + 1.6, sz = z - 1.6;
     g.add(block(1.1, 0.35, 0.75, '#e0a14f', sx, FLOOR_Y, sz, { radius: 0.08 }));
     g.add(mesh(G.box(1.1, 0.75, 0.1, 0.06), '#e0a14f', sx, FLOOR_Y + 0.7, sz - 0.4, { r: [-0.3, 0, 0] }));
     for (let i = 0; i < 5; i++) g.add(mesh(G.capsule(0.03, 0.3), '#dfe6ee', sx - 0.35 + i * 0.17, FLOOR_Y + 0.38, sz, { r: [Math.PI / 2, 0, 0.2], shadow: false }));
@@ -193,8 +201,9 @@ const FURNITURE = {
       g.add(mesh(G.torus(0.3, 0.05), '#9aa0ad', wx, FLOOR_Y + 0.55, n + 0.5));
       g.add(mesh(G.cyl(0.28, 0.28, 0.04, 20), glow('#8fd3ff', 0.4), wx, FLOOR_Y + 0.55, n + 0.5, { r: [Math.PI / 2, 0, 0] }));
     }
-    g.add(mesh(G.cyl(0.5, 0.4, 0.55, 16), '#d9b07c', x + 1.5, FLOOR_Y + 0.28, z + 0.2));
-    for (let i = 0; i < 3; i++) g.add(mesh(G.sphere(0.25, 10, 8), ['#ff9fc6', '#9fd3e8', '#fff1a8'][i], x + 1.4 + (i - 1) * 0.22, FLOOR_Y + 0.6, z + 0.2 + (i % 2) * 0.15, { s: [1, 0.6, 1] }));
+    const lx = x + 2.2, lz = z - 0.9; // laundry basket, out of the walkway
+    g.add(mesh(G.cyl(0.5, 0.4, 0.55, 16), '#d9b07c', lx, FLOOR_Y + 0.28, lz));
+    for (let i = 0; i < 3; i++) g.add(mesh(G.sphere(0.25, 10, 8), ['#ff9fc6', '#9fd3e8', '#fff1a8'][i], lx - 0.1 + (i - 1) * 0.22, FLOOR_Y + 0.6, lz + (i % 2) * 0.15, { s: [1, 0.6, 1] }));
     for (let i = 0; i < 4; i++) g.add(block(0.7, 0.14, 0.5, ['#ffffff', '#9fd3e8', '#ff9fc6', '#fff1a8'][i], x - HALF + 0.55, FLOOR_Y + i * 0.15, z + 0.9, { radius: 0.06 }));
   },
   foyer(g, x, z) {
@@ -471,7 +480,9 @@ export function buildManor(scene, roomsMeta) {
     if (cz === 2) g.add(block(CELL, 0.22, 0.22, '#e3d3bb', x, FLOOR_Y, z + HALF, { radius: 0.05 }));
     if (cx === 2) g.add(block(0.22, 0.22, CELL, '#e3d3bb', x + HALF, FLOOR_Y, z, { radius: 0.05 }));
 
+    const n0 = g.children.length;
     FURNITURE[id]?.(g, x, z);
+    const furniture = g.children.slice(n0);
 
     // ceiling lamp glow + "lights off" overlay for the cinematic
     const lamp = lampGlow(g, x + 0.3, FLOOR_Y + 2.6, z + 0.3, id === 'darkroom' ? '#ff4d5e' : '#ffe1a0', 0.14);
@@ -485,7 +496,7 @@ export function buildManor(scene, roomsMeta) {
     hl.position.set(x, FLOOR_Y + 0.03, z);
     g.add(hl);
 
-    rooms[id] = { id, center: new THREE.Vector3(x, FLOOR_Y, z), floor, dark, hl, lamp, cell: meta.cell };
+    rooms[id] = { id, center: new THREE.Vector3(x, FLOOR_Y, z), floor, dark, hl, lamp, cell: meta.cell, furniture };
   }
 
   // the camera-facing corner post to finish the dollhouse
@@ -502,7 +513,7 @@ export function buildManor(scene, roomsMeta) {
   for (const [x, z] of [[11, 6], [16.8, 3.4], [-10.8, 9]]) g.add(outline(block(1.2, 0.8, 1.0, '#58a85a', x, 0, z, { radius: 0.4 }), 0.03));
 
   const updateFireflies = fireflies(scene);
-  return { group: g, rooms, garden, station, update: (t) => {
+  return { group: g, rooms, garden, station, walls: WALLS, update: (t) => {
     updateFireflies(t);
     station.light.material.emissive.set(Math.sin(t * 6) > 0 ? '#ff4d5e' : '#4d8aff');
     garden.water.material.emissiveIntensity = 0.22 + Math.sin(t * 1.5) * 0.06;
