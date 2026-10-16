@@ -310,7 +310,8 @@ function tree(g, x, z, s = 1, kind = 0) {
 }
 
 function buildStation(g) {
-  const sx = 14.2, sz = -3.2;
+  // North of the drive, so the accused line up between the station and the road.
+  const sx = 14.4, sz = -5.0;
   g.add(block(2.4, 0.2, 2.4, '#d6d2e0', sx, 0, sz));
   g.add(outline(block(2.0, 2.6, 2.0, '#2d4a8a', sx, 0.2, sz, { radius: 0.12 }), 0.03));
   g.add(block(2.2, 0.25, 2.2, '#24407a', sx, 2.8, sz));
@@ -336,10 +337,34 @@ function buildStation(g) {
     g.add(win);
   }
   const spots = [];
-  for (let i = 0; i < 8; i++) spots.push(new THREE.Vector3(12.6 + (i % 4) * 1.15, 0, -0.6 + Math.floor(i / 4) * 1.4 + (i % 2) * 0.3));
+  for (let i = 0; i < 8; i++) spots.push(new THREE.Vector3(11.9 + (i % 4) * 1.15, 0, -2.95 + Math.floor(i / 4) * 1.15 + (i % 2) * 0.15));
   return { light, spots, pos: new THREE.Vector3(sx, 0, sz) };
 }
 
+// The drive: from a tunnel through the grassy hill at the island's east edge, straight west to the front porch.
+export const ROAD = { z: 0, from: 17.2, park: 12.6, porch: 10.0 };
+
+function buildRoad(g) {
+  const z = ROAD.z;
+  const x0 = 9.4, x1 = 16.1;
+  g.add(block(x1 - x0, 0.04, 2.0, '#d6d2e0', (x0 + x1) / 2, 0, z, { radius: 0.02 })); // curbs
+  g.add(block(x1 - x0, 0.06, 1.7, '#6f6b80', (x0 + x1) / 2, 0, z, { radius: 0.02 }));
+  for (let x = x0 + 0.9; x < x1 - 0.3; x += 1.0) g.add(block(0.45, 0.07, 0.1, '#fff1a8', x, 0, z, { radius: 0.02 }));
+  // front porch: steps up to the parlor, doormat, two lanterns
+  g.add(block(0.7, 0.13, 1.8, '#e9dfcf', 9.65, 0, z, { radius: 0.04 }));
+  g.add(mesh(G.box(0.9, 0.02, 1.2, 0.01), '#c0504d', CELL * 1.5 - 0.55, FLOOR_Y + 0.01, z, { receive: true }));
+  for (const s of [-1, 1]) {
+    g.add(mesh(G.cyl(0.05, 0.06, 1.4), '#3b3a44', 10.0, 0.7, z + s * 1.2));
+    lampGlow(g, 10.0, 1.48, z + s * 1.2, '#ffcf6a', 0.16);
+  }
+  // grassy hill with a tunnel: the police car drives out of it
+  g.add(outline(block(2.6, 1.9, 2.8, '#58a85a', 17.0, 0, z, { radius: 0.7 }), 0.03));
+  g.add(block(0.08, 1.35, 1.5, '#1b1530', 15.67, 0, z, { radius: 0.02 }));
+  for (const s of [-1, 1]) g.add(block(0.3, 1.55, 0.3, '#d6d2e0', 15.6, 0, z + s * 0.9, { radius: 0.06 }));
+  g.add(block(0.32, 0.3, 2.1, '#d6d2e0', 15.6, 1.45, z, { radius: 0.06 }));
+}
+
+/** Police car. Its nose points along +x; rotation.y = PI drives it west. */
 export function buildPoliceCar() {
   const car = new THREE.Group();
   car.add(outline(block(1.6, 0.55, 1.0, '#ffffff', 0, 0.22, 0, { radius: 0.2 }), 0.03));
@@ -349,8 +374,20 @@ export function buildPoliceCar() {
   const red = mesh(G.box(0.18, 0.12, 0.2, 0.05), glow('#ff4d5e', 2), -0.1, 1.27, -0.14);
   const blue = mesh(G.box(0.18, 0.12, 0.2, 0.05), glow('#4d8aff', 2), -0.1, 1.27, 0.14);
   car.add(red, blue);
-  for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) car.add(mesh(G.cyl(0.22, 0.22, 0.14, 14), '#2b2233', x, 0.22, z, { r: [Math.PI / 2, 0, 0] }));
+  const wheels = [];
+  for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) {
+    const w = mesh(G.cyl(0.22, 0.22, 0.14, 14), '#2b2233', x, 0.22, z, { r: [Math.PI / 2, 0, 0] });
+    w.add(mesh(G.box(0.3, 0.16, 0.06, 0.02), '#d6d2e0', 0, 0, 0, { shadow: false })); // hubcap, so the spin shows
+    car.add(w);
+    wheels.push(w);
+  }
+  // headlights on the nose, tail lights at the back
+  for (const s of [-1, 1]) {
+    car.add(mesh(G.box(0.06, 0.12, 0.2, 0.03), glow('#fff3b0', 1.8), 0.81, 0.42, s * 0.32));
+    car.add(mesh(G.box(0.06, 0.1, 0.16, 0.03), glow('#ff4d5e', 1.2), -0.81, 0.44, s * 0.34));
+  }
   car.userData.sirens = [red, blue];
+  car.userData.wheels = wheels;
   return car;
 }
 
@@ -458,10 +495,11 @@ export function buildManor(scene, roomsMeta) {
 
   const garden = buildGarden(g);
   const station = buildStation(g);
+  buildRoad(g);
 
   // trees around the island
   for (const [x, z, s, k] of [[-11, -10, 1.1, 1], [-11, -3, 0.9, 0], [-11, 5, 1.2, 1], [-10.6, 12, 1, 0], [-10.8, 20, 1.2, 1], [11.2, -10.5, 1, 0], [17, -10, 1.2, 1], [17, 9, 1, 0], [12, 13, 1.2, 1], [16.5, 18, 1, 0], [11.5, 22, 0.9, 1], [-3, -11.4, 0.8, 0], [4, -11.4, 1, 1]]) tree(g, x, z, s, k);
-  for (const [x, z] of [[11, 6], [16.8, 3], [-10.8, 9]]) g.add(outline(block(1.2, 0.8, 1.0, '#58a85a', x, 0, z, { radius: 0.4 }), 0.03));
+  for (const [x, z] of [[11, 6], [16.8, 3.4], [-10.8, 9]]) g.add(outline(block(1.2, 0.8, 1.0, '#58a85a', x, 0, z, { radius: 0.4 }), 0.03));
 
   const updateFireflies = fireflies(scene);
   return { group: g, rooms, garden, station, update: (t) => {

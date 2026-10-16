@@ -1,7 +1,7 @@
 // Renderer, isometric camera, picking, character placement and HTML anchors.
 import * as THREE from 'three';
 import { cellPath, cellCenter } from '../../shared/layout.js';
-import { buildManor, buildPoliceCar, FLOOR_Y } from './manor.js';
+import { buildManor, buildPoliceCar, FLOOR_Y, ROAD } from './manor.js';
 import { Critter } from './animals.js';
 
 const ISO_DIR = new THREE.Vector3(1, 1.05, 1).normalize();
@@ -78,8 +78,7 @@ export class World {
     this.tweens = [];
 
     this.policeCar = buildPoliceCar();
-    this.policeCar.position.set(15.8, 0, 2.6);
-    this.policeCar.rotation.y = -Math.PI / 2;
+    this.parkCar();
     this.scene.add(this.policeCar);
 
     // picking
@@ -108,6 +107,12 @@ export class World {
   assistSpot(roomId) {
     const c = this.rooms[roomId].center;
     return roomId === 'foyer' ? c.clone().add(new THREE.Vector3(1.2, 0, 1.4)) : c.clone().add(new THREE.Vector3(1.1, 0, 1.5));
+  }
+
+  /** The police car parked on the drive, nose toward the porch. */
+  parkCar() {
+    this.policeCar.position.set(ROAD.park, 0, ROAD.z);
+    this.policeCar.rotation.y = Math.PI;
   }
 
   setAssistant(on) {

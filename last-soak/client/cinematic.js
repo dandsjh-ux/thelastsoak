@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { $, el, esc } from './ui/dom.js';
 import { sfx } from './ui/sfx.js';
-import { FLOOR_Y } from './scene/manor.js';
+import { FLOOR_Y, ROAD } from './scene/manor.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const REACT = { clementine: '😤', barnaby: '💢', odette: '😰', pierre: '🍰?!', lulu: '😭', mochi: '💤', gus: '😬', hazel: '📸' };
@@ -63,7 +63,7 @@ export class Cinematic {
     w.assistant.group.visible = w.hasAssistant;
     w.placeDetective('foyer');
     w.policeCar.visible = true;
-    w.policeCar.position.set(15.8, 0, 2.6);
+    w.parkCar();
     w.dan.group.visible = false;
   }
 
@@ -158,21 +158,26 @@ export class Cinematic {
       case 'police':
         for (const r of Object.values(w.rooms)) r.dark.material.opacity = 0;
         this.showPortraits(true);
+        // The car starts hidden inside the hill's tunnel and drives west along the road to the porch.
+        this.carFrom = V(ROAD.from, 0, ROAD.z);
+        this.carTo = V(ROAD.park, 0, ROAD.z);
         w.policeCar.visible = true;
-        w.policeCar.position.set(26, 0, 2.6);
-        w.focus(V(13.5, 0, 1.5), 1.9, dt > 0.5);
-        this.carFrom = V(26, 0, 2.6);
-        this.carTo = V(15.8, 0, 2.6);
+        w.policeCar.position.copy(this.carFrom);
+        w.policeCar.rotation.y = Math.PI;
+        w.focus(V(13.4, 0, 0.6), 2.0, dt > 0.5);
         break;
       case 'snippets':
         $('#cinePortraits').innerHTML = '';
         w.detective.group.visible = true;
+        w.assistant.group.visible = w.hasAssistant;
         w.placeDetective('foyer');
         w.focus(V(0.5, 0, 0.5), 1.25, dt > 0.5);
         break;
       case 'accuse':
         this.anchors.clearAll();
         w.detective.group.visible = true;
+        w.assistant.group.visible = w.hasAssistant;
+        w.tweens = w.tweens.filter((x) => x.critter !== w.detective && x.critter !== w.assistant);
         w.placeDetective('foyer');
         w.focus(w.rooms.foyer.center.clone().add(V(0, 1, 0)), 2.4, dt > 0.5);
         $('#cineClock').classList.remove('hidden');
@@ -243,17 +248,34 @@ export class Cinematic {
         break;
       }
       case 'police': {
-        const k = Math.min(1, dt / 2.5);
-        const e = 1 - Math.pow(1 - k, 3);
-        w.policeCar.position.lerpVectors(this.carFrom, this.carTo, e);
+        const DRIVE = 2.6;
+        const k = THREE.MathUtils.clamp((dt - 0.2) / DRIVE, 0, 1);
+        const e = 1 - Math.pow(1 - k, 3); // ease out: brakes at the porch
+        const car = w.policeCar;
+        const before = car.position.x;
+        car.position.lerpVectors(this.carFrom, this.carTo, e);
+        car.rotation.y = Math.PI; // nose (+x in the model) points west, the way it drives
+        const moved = Math.abs(car.position.x - before);
+        for (const wh of car.userData.wheels) wh.rotation.y -= moved / 0.22;
         if (dt > 0.1) this.once('siren', () => sfx.siren());
-        if (dt > 2.7) this.once('hopout', () => {
-          const d = w.detective;
-          d.group.visible = true;
-          d.group.position.set(14.6, 0, 3.6);
-          d.group.rotation.y = Math.PI / 4;
-          d.hop(500);
-          a.say('waffles', 'Nobody leaves! 🐾', 'shout', 2600);
+        // Out of the driver's door (the side facing the camera), then up the road to the porch.
+        const hopOut = (critter, side, porchX, porchZ) => {
+          const from = V(ROAD.park - 0.2, 0, ROAD.z + side * 1.05);
+          const to = V(ROAD.porch + porchX, 0, ROAD.z + porchZ);
+          critter.group.visible = true;
+          critter.group.position.copy(from);
+          critter.hop(400);
+          w.tween(critter, from, to, 1300, false, () => (critter.group.rotation.y = Math.PI / 4));
+        };
+        if (dt > DRIVE + 0.35) this.once('hopout', () => {
+          hopOut(w.detective, 1, 0.6, 0.45);
+          sfx.pop();
+        });
+        if (w.hasAssistant && dt > DRIVE + 0.6) this.once('hopoutA', () => hopOut(w.assistant, -1, 1.4, -0.55));
+        if (dt > DRIVE + 1.8) this.once('shout', () => {
+          w.detective.hop(500);
+          a.say('waffles', 'Nobody leaves! 🐾', 'shout', 2400);
+          if (w.hasAssistant) a.say('biscuit', 'Nobody! 🐾', 'shout', 2000);
           sfx.pop();
         });
         break;

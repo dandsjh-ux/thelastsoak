@@ -865,7 +865,7 @@ world.onRoomClick = (id) => {
   if (id !== V.detective.loc) emit('goTo', { room: id });
 };
 
-window.__soak = { world, anchors, portraits }; // handy for debugging in the console
+window.__soak = { world, anchors, portraits, cine }; // handy for debugging in the console
 
 // Gentle idle camera on the home screen.
 world.overview(true);
