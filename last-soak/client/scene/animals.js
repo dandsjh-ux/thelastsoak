@@ -40,7 +40,8 @@ function base({ body, head = body, belly = null, feet = body, arms = body, headY
 }
 
 function smile(parts, y = -0.12, z = 0.47, w = 0.07) {
-  parts.headGroup.add(mesh(G.torus(w, 0.016, Math.PI), INK, 0, y, z, { r: [0, 0, Math.PI], shadow: false }));
+  parts.smile = mesh(G.torus(w, 0.016, Math.PI), INK, 0, y, z, { r: [0, 0, Math.PI], shadow: false });
+  parts.headGroup.add(parts.smile);
 }
 
 // ───────────────────────── species ─────────────────────────
@@ -259,6 +260,8 @@ export class Critter {
     this.hopUntil = 0;
     this.walking = false;
     this.nextBlink = 1 + Math.random() * 3;
+    this.eyeBase = this.parts.eyes.map((e) => e.scale.x);
+    this.eyeScale = 1;
     this.headAnchor = new THREE.Object3D();
     this.headAnchor.position.y = 2.15;
     this.group.add(this.headAnchor);
@@ -275,6 +278,20 @@ export class Critter {
   hop(ms = 500) {
     this.hopStart = performance.now();
     this.hopUntil = this.hopStart + ms;
+  }
+
+  /** Wide eyes and an O mouth: Mochi finding Mr. Dan. */
+  setShock(on) {
+    const hg = this.parts.headGroup;
+    this.shocked = on;
+    this.eyeScale = on ? 1.45 : 1;
+    if (on && !this.shockMouth) {
+      const eyeZ = this.parts.eyes[0].position.z;
+      this.shockMouth = mesh(G.sphere(0.075, 12, 10), INK, 0, -0.17, eyeZ + 0.02, { s: [0.9, 1.25, 0.5], shadow: false });
+      hg.add(this.shockMouth);
+    }
+    if (this.shockMouth) this.shockMouth.visible = on;
+    if (this.parts.smile) this.parts.smile.visible = !on;
   }
 
   setDizzy(on) {
@@ -316,6 +333,9 @@ export class Critter {
     this.nextBlink -= dt;
     const blinking = this.nextBlink < 0.12;
     if (this.nextBlink < 0) this.nextBlink = 2 + Math.random() * 4;
-    for (const e of this.parts.eyes) e.scale.y = blinking ? 0.15 : 1;
+    this.parts.eyes.forEach((e, i) => {
+      const base = this.eyeBase[i] * this.eyeScale;
+      e.scale.set(base, (blinking && !this.shocked ? 0.15 : 1) * this.eyeScale, base);
+    });
   }
 }

@@ -9,6 +9,8 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const REACT = { clementine: '😤', barnaby: '💢', odette: '😰', pierre: '🍰?!', lulu: '😭', mochi: '💤', gus: '😬', hazel: '📸' };
 const FAKE_SNIPS = ['…his {tea}…', '…{pond}… …kitchen.', '…the {garden door}…', '{cards}… …eleven.', '…{splash}…', '…{white} …', '…the {will}…', '…{pawprints}…'];
 const END = 60;
+// Death scene beats, in seconds from the start of the 'found' shot.
+const FOUND = { reveal: 1.0, walk: 1.3, walkMs: 2400, shock: 3.9, pullBack: 6.4 };
 
 export class Cinematic {
   constructor(world, anchors, meta, portraits) {
@@ -53,6 +55,8 @@ export class Cinematic {
     w.assistant.group.visible = false;
     w.policeCar.visible = false;
     for (const r of Object.values(w.rooms)) r.dark.material.opacity = 0;
+    w.critters.mochi.setShock(false);
+    this.fade(false, true);
     this.lantern?.removeFromParent();
     ['#cineClock', '#cineCard', '#cineTitle'].forEach((s) => $(s).classList.add('hidden'));
   }
@@ -65,6 +69,18 @@ export class Cinematic {
     w.policeCar.visible = true;
     w.parkCar();
     w.dan.group.visible = false;
+  }
+
+  /** Fade the screen to black (on) or back (off). */
+  fade(on, instant = false) {
+    const f = $('#cineFade');
+    f.classList.toggle('instant', instant);
+    f.classList.toggle('on', on);
+  }
+
+  /** How long the current shot lasts, in seconds. */
+  shotLength(idx) {
+    return (this.shots[idx + 1]?.at ?? END) - this.shots[idx].at;
   }
 
   once(key, fn) {
@@ -99,7 +115,7 @@ export class Cinematic {
       $('#cineTitle').classList.toggle('hidden', !shot.title);
       this.enter(shot.shot, t - shot.at);
     }
-    this.during(this.shots[idx].shot, t - this.shots[idx].at, t);
+    this.during(this.shots[idx].shot, t - this.shots[idx].at, t, this.shotLength(idx));
   }
 
   /** Set up the scene for a shot (also used when joining mid-cinematic). */
@@ -133,24 +149,29 @@ export class Cinematic {
         break;
       }
       case 'found': {
+        // Black first (the fade began at the end of the soak), then the reveal: Mr. Dan floating, Mochi arriving.
+        this.fade(dt < FOUND.reveal, dt < FOUND.reveal);
         dan.group.visible = true;
         w.tweens = w.tweens.filter((x) => x.critter !== dan);
         dan.setDizzy(true);
         dan.group.position.copy(g.pondCenter).add(V(-0.8, -0.3, 0.2));
         dan.group.rotation.set(-Math.PI / 2 + 0.25, 0, 0.3);
         const mochi = w.critters.mochi;
-        const from = V(0, FLOOR_Y - 0.26, 9.8);
-        const to = V(-0.6, 0, 12.3);
-        mochi.group.position.copy(from);
+        mochi.setShock(false);
+        this.mochiFrom = V(0, FLOOR_Y - 0.26, 9.8);
+        this.mochiTo = V(-0.6, 0, 12.3);
+        mochi.group.position.copy(this.mochiFrom);
+        mochi.group.rotation.y = Math.PI;
         this.lantern = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshToonMaterial({ color: '#ffd27a', emissive: '#ffd27a', emissiveIntensity: 2 }));
         this.lantern.position.set(0.5, 0.9, 0.2);
         mochi.group.add(this.lantern);
-        w.tween(mochi, from, to, Math.max(200, 3200 - dt * 1000));
-        w.focus(V(0, 0, 13.5), 2.1, dt > 0.5);
+        w.focus(V(-0.3, 0, 14.0), 2.3, true);
         break;
       }
       case 'lockdown':
+        this.fade(false, true);
         this.lantern?.removeFromParent();
+        w.critters.mochi.setShock(false);
         w.returnHome('mochi');
         w.focus(V(1.5, 0, 3), 1.15, dt > 0.5);
         for (const r of Object.values(w.rooms)) if (r.id !== 'foyer') r.dark.material.opacity = 0.72;
@@ -170,6 +191,7 @@ export class Cinematic {
         $('#cinePortraits').innerHTML = '';
         w.detective.group.visible = true;
         w.assistant.group.visible = w.hasAssistant;
+        w.tweens = w.tweens.filter((x) => x.critter !== w.detective && x.critter !== w.assistant);
         w.placeDetective('foyer');
         w.focus(V(0.5, 0, 0.5), 1.25, dt > 0.5);
         break;
@@ -177,7 +199,6 @@ export class Cinematic {
         this.anchors.clearAll();
         w.detective.group.visible = true;
         w.assistant.group.visible = w.hasAssistant;
-        w.tweens = w.tweens.filter((x) => x.critter !== w.detective && x.critter !== w.assistant);
         w.placeDetective('foyer');
         w.focus(w.rooms.foyer.center.clone().add(V(0, 1, 0)), 2.4, dt > 0.5);
         $('#cineClock').classList.remove('hidden');
@@ -196,7 +217,7 @@ export class Cinematic {
     }
   }
 
-  during(name, dt, t) {
+  during(name, dt, t, len) {
     const w = this.world;
     const a = this.anchors;
     switch (name) {
@@ -226,14 +247,38 @@ export class Cinematic {
           w.dan.group.position.y = -0.15;
           a.say('dan', '♨️ ahhh…', '', 2400);
         });
-        break;
-      case 'found':
-        if (dt > 3.4) this.once('nyaa', () => {
-          a.say('mochi', 'NYAAA!', 'shout', 3500);
-          w.critters.mochi.hop(500);
-          sfx.sting();
+        if (dt > len - 0.8) this.once('fadeOut', () => {
+          a.clear('dan');
+          this.fade(true);
         });
         break;
+      case 'found': {
+        const mochi = w.critters.mochi;
+        if (dt > FOUND.reveal) this.once('fadeIn', () => this.fade(false));
+        if (dt > FOUND.walk) this.once('walk', () => {
+          const left = FOUND.walkMs - (dt - FOUND.walk) * 1000;
+          if (left > 150) w.tween(mochi, this.mochiFrom, this.mochiTo, left);
+          else mochi.group.position.copy(this.mochiTo);
+        });
+        if (dt > FOUND.shock) this.once('shock', () => {
+          // She sees him: snap to a close-up of her face.
+          w.tweens = w.tweens.filter((x) => x.critter !== mochi);
+          mochi.walking = false;
+          mochi.group.position.copy(this.mochiTo);
+          mochi.group.rotation.y = Math.PI / 4;
+          mochi.setShock(true);
+          mochi.hop(450);
+          w.focus(this.mochiTo.clone().add(V(0.1, 1.5, 0.1)), 6.5);
+          w.shake = 0.18;
+          a.say('mochi', 'NYAAA!', 'shout', 3000);
+          sfx.sting();
+        });
+        if (dt > FOUND.pullBack) this.once('pullBack', () => {
+          // Pull back so Mochi and Mr. Dan share the frame.
+          w.focus(V(-0.6, 0.6, 13.6), 3.0);
+        });
+        break;
+      }
       case 'lockdown': {
         const ids = this.meta.characters.map((c) => c.id);
         ids.forEach((id, i) => {
