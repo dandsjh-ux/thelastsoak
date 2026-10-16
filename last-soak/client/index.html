@@ -39,7 +39,8 @@
         <summary>How to play</summary>
         <ul>
           <li><b>2–8 players.</b> One is <b>Inspector Waffles</b> 🐶, the detective. Everyone else secretly plays one of 8 animal suspects. The rest are NPCs, and the detective can't tell who's who.</li>
-          <li><b>Detective:</b> 5 minutes. Walk into rooms, ask questions, then press <b>ACCUSE</b>. Two wrong guesses and the guilty go free.</li>
+          <li><b>Host:</b> in the lobby you can choose the detectives (a lead and an assistant) and up to 2 murderers, or leave roles on 🎲 Random.</li>
+          <li><b>Detective:</b> 5 minutes. Walk into rooms, ask questions, then press <b>ACCUSE</b>. Two wrong guesses and the guilty go free. An assistant detective can ask questions and talk to the lead on the radio, which everyone can hear. Only the lead can ACCUSE.</li>
           <li><b>Suspects:</b> you're locked in your room, but you'll overhear snippets of every interrogation. Pick your answers: truth, lie, dodge, or confess. Keep your secret!</li>
         </ul>
       </details>
@@ -93,13 +94,22 @@
     <form id="whisperForm"><input id="whisperInput" maxlength="200" placeholder="Only your partner can read this…" autocomplete="off" /><button class="btn small">Send</button></form>
   </aside>
 
+  <aside id="radioPanel" class="radio-panel hidden">
+    <header><b>📻 Detective radio</b><button class="x" data-close="radioPanel">✕</button></header>
+    <p id="radioNote" class="radio-note"></p>
+    <ol id="radioList"></ol>
+    <form id="radioForm"><input id="radioInput" maxlength="200" placeholder="Talk to your partner…" autocomplete="off" /><button class="btn small">Send</button></form>
+  </aside>
+
   <div id="panel" class="panel hidden"></div>
 
   <!-- ============ CINEMATIC ============ -->
   <div id="cine" class="hidden">
+    <div id="cineFade" class="cine-fade"></div>
     <div id="cineClock" class="cine-clock hidden"></div>
     <div id="cineCard" class="cine-card hidden"></div>
     <div id="cinePortraits" class="cine-portraits"></div>
+    <div id="cineGrudges" class="cine-grudges"></div>
     <div id="cineTitle" class="cine-title hidden"><h1>THE LAST SOAK</h1></div>
     <div id="cineCaption" class="cine-caption"></div>
     <button id="skipBtn" class="btn small skip">Skip ⏭</button>

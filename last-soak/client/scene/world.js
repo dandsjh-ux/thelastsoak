@@ -1,7 +1,7 @@
 // Renderer, isometric camera, picking, character placement and HTML anchors.
 import * as THREE from 'three';
 import { cellPath, cellCenter } from '../../shared/layout.js';
-import { buildManor, buildPoliceCar, FLOOR_Y } from './manor.js';
+import { buildManor, buildPoliceCar, FLOOR_Y, ROAD } from './manor.js';
 import { Critter } from './animals.js';
 
 const ISO_DIR = new THREE.Vector3(1, 1.05, 1).normalize();
@@ -11,6 +11,15 @@ const shown = (o) => {
   return true;
 };
 const OVERVIEW = { target: new THREE.Vector3(2.5, 0, 5), zoom: 1 };
+// Where everyone stands inside a room, as offsets from its centre (x east, z south). The furniture keeps
+// these spots and the centre cross clear (see manor.js), so nobody walks through a table.
+export const STAND = {
+  suspect: new THREE.Vector3(-1.4, 0, 1.3),
+  detective: new THREE.Vector3(1.4, 0, 1.3),
+  assistant: new THREE.Vector3(0.4, 0, 2.3),
+  foyerDetective: new THREE.Vector3(0.3, 0, 0.4),
+  foyerAssistant: new THREE.Vector3(1.2, 0, 1.4),
+};
 
 export class World {
   constructor(canvas, meta) {
@@ -51,7 +60,7 @@ export class World {
     for (const c of meta.characters) {
       const k = new Critter(c.id);
       const room = this.rooms[c.room];
-      const pos = room.center.clone().add(new THREE.Vector3(-0.5, 0, -0.3));
+      const pos = room.center.clone().add(STAND.suspect);
       k.group.position.copy(pos);
       k.group.rotation.y = FACE_CAMERA;
       this.home[c.id] = pos;
@@ -65,13 +74,20 @@ export class World {
     this.detective.group.position.copy(this.detSpot('foyer'));
     this.detective.group.rotation.y = FACE_CAMERA;
     this.scene.add(this.detective.group);
+    // Assistant detective: only shown when the host picked one; walks a step behind the lead.
+    this.assistant = new Critter('biscuit');
+    this.assistant.group.visible = false;
+    this.assistant.group.position.copy(this.assistSpot('foyer'));
+    this.assistant.group.rotation.y = FACE_CAMERA;
+    this.scene.add(this.assistant.group);
+    this.hasAssistant = false;
     this.detLoc = 'foyer';
     this.walk = null;
+    this.walkA = null;
     this.tweens = [];
 
     this.policeCar = buildPoliceCar();
-    this.policeCar.position.set(15.8, 0, 2.6);
-    this.policeCar.rotation.y = -Math.PI / 2;
+    this.parkCar();
     this.scene.add(this.policeCar);
 
     // picking
@@ -94,7 +110,23 @@ export class World {
 
   detSpot(roomId) {
     const c = this.rooms[roomId].center;
-    return roomId === 'foyer' ? c.clone().add(new THREE.Vector3(0.3, 0, 0.4)) : c.clone().add(new THREE.Vector3(1.5, 0, 0.3));
+    return c.clone().add(roomId === 'foyer' ? STAND.foyerDetective : STAND.detective);
+  }
+
+  assistSpot(roomId) {
+    const c = this.rooms[roomId].center;
+    return c.clone().add(roomId === 'foyer' ? STAND.foyerAssistant : STAND.assistant);
+  }
+
+  /** The police car parked on the drive, nose toward the porch. */
+  parkCar() {
+    this.policeCar.position.set(ROAD.park, 0, ROAD.z);
+    this.policeCar.rotation.y = Math.PI;
+  }
+
+  setAssistant(on) {
+    this.hasAssistant = !!on;
+    this.assistant.group.visible = this.hasAssistant;
   }
 
   // ───────────────────────── camera ─────────────────────────
@@ -222,40 +254,72 @@ export class World {
 
   // ───────────────────────── cast control ─────────────────────────
 
+  /** Room-to-room route: from wherever we stand to the room centre, then centre → doorway → centre…, then the final spot. */
+  route(from, to, start, end) {
+    const cells = cellPath(this.rooms[from].cell, this.rooms[to].cell);
+    const at = (c) => {
+      const p = cellCenter(c);
+      return new THREE.Vector3(p.x, FLOOR_Y, p.z);
+    };
+    const pts = [start.clone(), at(cells[0])];
+    for (let i = 1; i < cells.length; i++) pts.push(at(cells[i - 1]).add(at(cells[i])).multiplyScalar(0.5), at(cells[i])); // doorway, centre
+    pts.push(end);
+    return pts;
+  }
+
   /** Walk the corgi along the hallway grid; finishes by arriveAt (local ms). */
   moveDetective(to, durationMs) {
     const from = this.detLoc;
     this.detLoc = to;
-    const cells = cellPath(this.rooms[from].cell, this.rooms[to].cell);
-    const pts = [this.detective.group.position.clone()];
-    for (let i = 1; i < cells.length; i++) {
-      const a = cellCenter(cells[i - 1]);
-      const b = cellCenter(cells[i]);
-      pts.push(new THREE.Vector3((a.x + b.x) / 2, FLOOR_Y, (a.z + b.z) / 2)); // doorway
-      if (i < cells.length - 1) pts.push(new THREE.Vector3(b.x, FLOOR_Y, b.z));
-    }
-    pts.push(this.detSpot(to));
+    const pts = this.route(from, to, this.detective.group.position, this.detSpot(to));
+    const dur = Math.max(300, durationMs);
+    this.walk = this.makeWalk(pts, performance.now(), dur);
+    this.detective.walking = true;
+    // The assistant takes the same route a moment later and stops at their own spot.
+    const ptsA = this.route(from, to, this.assistant.group.position, this.assistSpot(to));
+    this.walkA = this.makeWalk(ptsA, performance.now() + 250, dur);
+    this.assistant.walking = true;
+  }
+
+  makeWalk(pts, t0, dur) {
     const lens = [];
     let total = 0;
     for (let i = 1; i < pts.length; i++) total += lens[i - 1] = pts[i].distanceTo(pts[i - 1]);
-    this.walk = { pts, lens, total, t0: performance.now(), dur: Math.max(300, durationMs) };
-    this.detective.walking = true;
+    return { pts, lens, total, t0, dur };
+  }
+
+  /** Advance a walk; returns true once it has finished. */
+  stepWalk(critter, w, now) {
+    const k = THREE.MathUtils.clamp((now - w.t0) / w.dur, 0, 1);
+    let dist = k * w.total;
+    let i = 0;
+    while (i < w.lens.length - 1 && dist > w.lens[i]) dist -= w.lens[i++];
+    const a = w.pts[i], b = w.pts[i + 1];
+    const p = a.clone().lerp(b, w.lens[i] ? dist / w.lens[i] : 1);
+    critter.group.position.copy(p);
+    const dir = b.clone().sub(a);
+    if (dir.lengthSq() > 0.001 && k > 0) critter.group.rotation.y = Math.atan2(dir.x, dir.z);
+    return k >= 1;
   }
 
   placeDetective(roomId) {
     this.detLoc = roomId;
     this.walk = null;
+    this.walkA = null;
     this.detective.walking = false;
+    this.assistant.walking = false;
     this.detective.group.position.copy(this.detSpot(roomId));
+    this.assistant.group.position.copy(this.assistSpot(roomId));
     this.faceSuspect();
+    this.faceSuspect(this.assistant);
   }
 
-  faceSuspect() {
+  faceSuspect(who = this.detective) {
     const suspect = this.meta.characters.find((c) => c.room === this.detLoc);
     if (suspect && !this.critters[suspect.id].atStation) {
-      const d = this.critters[suspect.id].group.position.clone().sub(this.detective.group.position);
-      this.detective.group.rotation.y = Math.atan2(d.x, d.z);
-    } else this.detective.group.rotation.y = FACE_CAMERA;
+      const d = this.critters[suspect.id].group.position.clone().sub(who.group.position);
+      who.group.rotation.y = Math.atan2(d.x, d.z);
+    } else who.group.rotation.y = FACE_CAMERA;
   }
 
   sendToStation(charId, animate = true) {
@@ -313,22 +377,15 @@ export class World {
     const t = this.timer.getElapsed();
     const now = performance.now();
 
-    if (this.walk) {
-      const w = this.walk;
-      const k = Math.min(1, (now - w.t0) / w.dur);
-      let dist = k * w.total;
-      let i = 0;
-      while (i < w.lens.length - 1 && dist > w.lens[i]) dist -= w.lens[i++];
-      const a = w.pts[i], b = w.pts[i + 1];
-      const p = a.clone().lerp(b, w.lens[i] ? dist / w.lens[i] : 1);
-      this.detective.group.position.copy(p);
-      const dir = b.clone().sub(a);
-      if (dir.lengthSq() > 0.001) this.detective.group.rotation.y = Math.atan2(dir.x, dir.z);
-      if (k >= 1) {
-        this.walk = null;
-        this.detective.walking = false;
-        this.faceSuspect();
-      }
+    if (this.walk && this.stepWalk(this.detective, this.walk, now)) {
+      this.walk = null;
+      this.detective.walking = false;
+      this.faceSuspect();
+    }
+    if (this.walkA && this.stepWalk(this.assistant, this.walkA, now)) {
+      this.walkA = null;
+      this.assistant.walking = false;
+      this.faceSuspect(this.assistant);
     }
     this.tweens = this.tweens.filter((tw) => {
       const k = Math.min(1, (now - tw.t0) / tw.ms);
@@ -349,6 +406,7 @@ export class World {
     for (const k of Object.values(this.critters)) k.update(t, dt);
     this.dan.update(t, dt);
     this.detective.update(t, dt);
+    this.assistant.update(t, dt);
     this.manor.update(t);
     this.policeCar.userData.sirens.forEach((s, i) => (s.visible = Math.sin(t * 8 + i * Math.PI) > 0));
     this.onFrame?.(t, dt);

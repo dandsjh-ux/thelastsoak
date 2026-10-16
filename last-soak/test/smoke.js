@@ -56,8 +56,9 @@ try {
   await until(() => all.some((c) => c !== first && c.view?.offer?.you), 'second offer');
   const det = all.find((c) => c !== first && c.view.offer.you);
   await det.emit('offerReply', { accept: true });
-  await until(() => det.view.phase === 'cinematic', 'cinematic');
   const sus = all.filter((c) => c !== det);
+  // Each player's view arrives on its own socket: wait for all of them, not just the detective's.
+  await until(() => [det, ...sus].every((c) => c.view?.phase === 'cinematic'), 'cinematic');
   const seats = sus.map((c) => c.view.you.charId).sort();
   assert.deepEqual(seats, ['barnaby', 'clementine'], 'both murderers dealt to humans in 3-player game');
   const detJson = JSON.stringify(det.view);
@@ -156,9 +157,10 @@ try {
   assert.equal(res.chars.find((c) => c.id === 'pierre').human, false);
   assert.ok(res.timeline.some((t) => t.text.includes('waits behind the hedge')));
 
-  // Host restarts.
-  assert.ok((await A.emit('playAgain')).ok);
-  await until(() => A.view.phase === 'lobby', 'back to lobby');
+  // Host restarts. If the host was dealt Barnaby, their seat now lives in the newest tab.
+  const host = [A, B, C, barn3].find((c) => c.s.connected && c.view?.you.isHost);
+  assert.ok((await host.emit('playAgain')).ok);
+  await until(() => host.view.phase === 'lobby', 'back to lobby');
 
   for (const c of [A, B, C, barn3]) c.s.close();
   console.log('✔ 3-player game (2 murderers) passed');
@@ -174,7 +176,7 @@ try {
   const det2 = D.view.offer?.you ? D : E;
   const sus2 = det2 === D ? E : D;
   await det2.emit('offerReply', { accept: true });
-  await until(() => sus2.view?.phase === 'cinematic', 'cinematic 2p');
+  await until(() => sus2.view?.phase === 'cinematic' && det2.view?.phase === 'cinematic', 'cinematic 2p');
   assert.equal(sus2.view.you.charId, 'clementine', 'the only human suspect is the murderer');
   assert.equal(sus2.view.whisper, undefined, 'no whisper chat with one murderer');
   assert.ok(!sus2.view.card.evening.some((e) => e.text.includes('Barnaby')), '1M card');
@@ -207,6 +209,73 @@ try {
   assert.equal(sus3.view.result.outcome, 'dropped');
   sus3.s.close();
   console.log('✔ 2-player game (1 murderer, autopilot, donut) passed');
+
+  // ── 4-player game: host picks the lead, an assistant and one murderer ──
+  const H = client('Hal'), L = client('Lee'), S = client('Sam'), I = client('Ivy');
+  await Promise.all([H, L, S, I].map((c) => new Promise((r) => c.s.on('connect', r))));
+  const g3 = await H.emit('create', { name: 'Hal' });
+  for (const c of [L, S, I]) await c.emit('join', { name: c.name, code: g3.code });
+  await until(() => H.view?.players.length === 4, 'four players');
+  const pid = (c) => H.view.players.find((p) => p.name === c.name).id;
+  assert.equal((await L.emit('setRole', { playerId: pid(L), role: 'lead' })).ok, false, 'only the host picks roles');
+  assert.ok((await H.emit('setRole', { playerId: pid(L), role: 'lead' })).ok);
+  assert.ok((await H.emit('setRole', { playerId: pid(S), role: 'assistant' })).ok);
+  assert.ok((await H.emit('setRole', { playerId: pid(H), role: 'murderer' })).ok);
+  assert.ok((await H.emit('setRole', { playerId: pid(I), role: 'murderer' })).ok);
+  assert.ok((await H.emit('setRole', { playerId: pid(I), role: 'random' })).ok);
+  await until(() => I.view.players.find((p) => p.name === 'Lee').pick === 'lead', 'lead pick is public');
+  assert.equal(I.view.players.find((p) => p.name === 'Hal').pick, undefined, 'murderer pick hidden from other players');
+  assert.equal(H.view.players.find((p) => p.name === 'Hal').pick, 'murderer', 'host sees the murderer pick');
+  assert.ok((await H.emit('start')).ok, 'start with picks');
+  await until(() => [H, L, S, I].every((c) => c.view?.phase === 'cinematic'), 'straight to the cinematic (no offer)');
+  assert.equal(L.view.you.role, 'detective');
+  assert.equal(L.view.you.lead, true);
+  assert.equal(S.view.you.role, 'detective');
+  assert.equal(S.view.you.lead, false);
+  assert.equal(S.view.you.charId, null, 'assistant has no suspect seat');
+  assert.equal(H.view.you.charId, 'clementine', 'picked murderer gets the murder seat');
+  assert.equal(H.view.whisper, undefined, 'one picked murderer → 1-murderer version (no partner)');
+  assert.equal(H.view.card.role, 'MURDERER');
+  assert.equal(I.view.card.role, 'INNOCENT');
+  assert.equal(I.view.assistant.name, 'Sam', 'everyone sees the assistant');
+  assert.equal(I.view.detective.name, 'Lee', 'everyone sees the lead');
+  for (const c of [H, L, S, I]) await c.emit('skipCinematic');
+  await until(() => S.view.phase === 'briefing', 'briefing 4p');
+  assert.ok(S.view.calls?.length === 1 && S.view.clues, 'assistant gets the call and clues');
+  await S.emit('beginInvestigation');
+  await wait(50);
+  assert.equal(S.view.phase, 'briefing', 'only the lead hangs up');
+  await L.emit('beginInvestigation');
+  await until(() => S.view.phase === 'investigation', 'investigation 4p');
+
+  // Radio: the detectives talk, everyone hears; suspects can't send.
+  await S.emit('radio', { text: 'try the kitchen' });
+  await until(() => I.fx.some((f) => f.type === 'radio' && f.msg.text === 'try the kitchen'), 'suspect hears the radio');
+  assert.equal(I.view.radio.canSend, false);
+  await I.emit('radio', { text: 'nope' });
+  await wait(50);
+  assert.equal(L.view.radio.log.length, 1, 'suspect radio ignored');
+
+  // Assistant can't move or accuse, but can ask and hears answers in full.
+  await S.emit('goTo', { room: 'kitchen' });
+  await wait(50);
+  assert.equal(L.view.detective.loc, 'foyer', 'assistant cannot walk the lead');
+  await L.emit('goTo', { room: 'kitchen' });
+  await wait(L.view.detective.arriveAt - Date.now() + 80);
+  await S.emit('ask', { q: 2 });
+  await until(() => H.view.pending?.options, 'assistant asked');
+  await H.emit('answer', { choice: 0 });
+  await until(() => S.fx.some((f) => f.type === 'answered'), 'assistant hears answer');
+  assert.equal(S.fx.find((f) => f.type === 'answered').full, true);
+  await S.emit('accuse', { charId: 'clementine' });
+  await wait(50);
+  assert.equal(L.view.chars.find((c) => c.id === 'clementine').accused, false, 'assistant cannot accuse');
+  await L.emit('accuse', { charId: 'clementine' });
+  await until(() => S.view.phase === 'reveal', 'reveal 4p');
+  assert.equal(S.view.result.outcome, 'detective');
+  assert.equal(S.view.result.detective.assistant, 'Sam');
+  for (const c of [H, L, S, I]) c.s.close();
+  console.log('✔ 4-player game (host-picked roles, assistant, radio) passed');
   console.log('✔ smoke test passed');
 } catch (e) {
   failed = true;

@@ -121,6 +121,20 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .players li .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--mint); flex: none; }
 .players li.off .dot { background: #c9bfd6; }
 .players li .tagx { margin-left: auto; font-size: 13px; color: var(--ink-soft); }
+.players li .pname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players li select.pick { margin-left: auto; font: inherit; font-size: 13px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 10px; background: var(--paper-2); max-width: 52%; }
+.players li select.pick + .tagx { margin-left: 4px; }
+.players li .pickx { margin-left: auto; font-size: 13px; background: #e6f1ff; border-radius: 8px; padding: 2px 8px; }
+.players li .pickx + .tagx { margin-left: 4px; }
+.roles .team { display: grid; gap: 8px; }
+.roles .member { display: flex; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 14px; padding: 6px 10px; }
+.roles .member small { display: block; color: var(--ink-soft); }
+.roles .head.mine { align-items: flex-start; background: #fff; border: 2px dashed var(--line); border-radius: 14px; padding: 10px; }
+.roles .head.mine h2 { margin: 0 0 4px; }
+.roles .head.mine p { margin: 0; }
+.roles .why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.roles .why li { display: flex; gap: 8px; align-items: center; grid-template-columns: none; font-size: 14px; line-height: 1.3; }
+.roles .why li .portrait { width: 34px; height: 34px; flex: none; }
 .row { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
 
 /* ───────── HUD ───────── */
@@ -218,23 +232,32 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
 
 /* ───────── side panels ───────── */
-.log-panel, .whisper-panel {
+.log-panel, .whisper-panel, .radio-panel {
   position: fixed; right: 12px; top: 120px; z-index: 6; width: min(330px, calc(100% - 24px));
   max-height: calc(100% - 330px); min-height: 160px; display: flex; flex-direction: column;
   background: rgba(255, 250, 242, 0.97); border: 3px solid var(--ink); border-radius: var(--r); box-shadow: var(--shadow);
 }
 .whisper-panel { left: 12px; right: auto; background: #f1ebff; }
-.log-panel header, .whisper-panel header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 2px dashed var(--line); }
+.radio-panel { left: 12px; right: auto; background: #e6f1ff; }
+/* Murderers can have both chats open: stack the radio under the whisper panel. */
+.whisper-panel:not(.hidden) ~ .radio-panel { top: auto; bottom: 230px; max-height: calc(50% - 200px); }
+.whisper-panel:not(.hidden) { max-height: calc(50% - 140px); }
+.log-panel header, .whisper-panel header, .radio-panel header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 2px dashed var(--line); }
 .x { background: none; border: 0; font-size: 16px; cursor: pointer; color: var(--ink-soft); }
-.log-panel ol, .whisper-panel ol { list-style: none; margin: 0; padding: 8px 12px; overflow-y: auto; flex: 1; display: grid; gap: 8px; align-content: start; user-select: text; }
+.log-panel ol, .whisper-panel ol, .radio-panel ol { list-style: none; margin: 0; padding: 8px 12px; overflow-y: auto; flex: 1; display: grid; gap: 8px; align-content: start; user-select: text; }
 .log-panel li { font-size: 14px; line-height: 1.35; }
 .log-panel li .q { color: var(--ink-soft); font-size: 13px; }
 .log-panel li .a { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; }
 .log-panel li.sys { text-align: center; color: var(--red-d); font-weight: 600; }
 .whisper-panel li { font-size: 14px; background: #fff; border-radius: 12px; padding: 6px 10px; }
 .whisper-panel li.me { background: #dcd0ff; justify-self: end; }
-.whisper-panel form { display: flex; gap: 6px; padding: 8px; }
-.whisper-panel input { font-size: 15px; padding: 6px 10px; border-width: 2px; }
+.whisper-panel form, .radio-panel form { display: flex; gap: 6px; padding: 8px; }
+.whisper-panel input, .radio-panel input { font-size: 15px; padding: 6px 10px; border-width: 2px; }
+.radio-note { margin: 6px 12px 0; font-size: 12px; color: var(--ink-soft); }
+.radio-panel li { font-size: 14px; background: #fff; border-radius: 12px; padding: 6px 10px; display: flex; gap: 6px; align-items: flex-start; }
+.radio-panel li.assistant { background: #fff6e0; }
+.radio-panel li.me { outline: 2px solid #9fc3ff; }
+.radio-panel li.empty { background: none; color: var(--ink-soft); }
 
 /* ───────── modals ───────── */
 .modal-back { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(27, 22, 64, 0.55); animation: fade 0.2s; }
@@ -273,6 +296,7 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .toast { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; padding: 8px 14px; font-weight: 600; text-align: center; box-shadow: 0 4px 0 var(--ink); animation: pop 0.25s; }
 .toast.whisper { background: #efe9ff; font-style: italic; }
 .toast.detective { background: #cfe0ff; }
+.toast.radio { background: #e6f1ff; }
 .toast.station { background: #ffd6da; }
 .overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(27, 22, 64, 0.7); }
 .overlay .card { text-align: center; min-width: 220px; }
@@ -283,6 +307,10 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 #cine { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
 #cine::before, #cine::after { content: ''; position: absolute; left: 0; right: 0; height: 7vh; background: #120d2a; }
 #cine::before { top: 0; } #cine::after { bottom: 0; }
+/* Fade to black (death scene). Sits under the captions so the narration stays readable. */
+.cine-fade { position: absolute; inset: 0; background: #05030d; opacity: 0; transition: opacity 0.7s ease; }
+.cine-fade.on { opacity: 1; }
+.cine-fade.instant { transition: none; }
 .cine-caption {
   position: absolute; left: 50%; bottom: calc(7vh + 18px); transform: translateX(-50%);
   width: min(760px, calc(100% - 24px)); text-align: center; color: #fff;
@@ -295,6 +323,19 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .cine-card { position: absolute; top: calc(7vh + 18px); left: 50%; transform: translateX(-50%); background: var(--sun); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 18px; font-weight: 700; font-size: 20px; box-shadow: 0 4px 0 var(--ink); animation: pop 0.3s; }
 .cine-portraits { position: absolute; top: calc(7vh + 72px); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: min(640px, 100%); }
 .cine-portraits img { animation: pop 0.3s backwards; }
+.cine-grudges { position: absolute; top: calc(7vh + 14px); left: 50%; transform: translateX(-50%); width: min(820px, calc(100% - 24px)); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cine-grudges:empty { display: none; }
+.grudge { display: flex; gap: 8px; align-items: center; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; padding: 6px 10px; box-shadow: 0 4px 0 var(--ink); animation: pop 0.3s; text-align: left; }
+.grudge.liked { background: #e7f8ec; }
+.grudge b { font-size: 16px; }
+.grudge small { color: var(--ink-soft); font-size: 12px; }
+.grudge span { display: block; font-size: 15px; line-height: 1.3; }
+@media (max-width: 640px) {
+  .cine-grudges { grid-template-columns: 1fr; gap: 4px; }
+  .grudge { padding: 3px 8px; }
+  .grudge .portrait { width: 34px; height: 34px; }
+  .grudge span { font-size: 13px; }
+}
 .cine-title { position: absolute; inset: 0; display: grid; place-items: center; }
 .cine-title h1 { font-size: clamp(44px, 9vw, 96px); color: #fff; margin: 0; letter-spacing: 3px; text-shadow: 0 6px 0 var(--pink-d), 0 10px 30px rgba(0, 0, 0, 0.5); animation: pop 0.6s cubic-bezier(.3, 1.6, .5, 1); }
 .accuse-demo { display: flex; align-items: center; gap: 14px; }
@@ -319,7 +360,7 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 @media (max-width: 640px) {
   #clock { font-size: 26px; min-width: 86px; }
   .hud-left .pill:not(.code) { display: none; }
-  .log-panel, .whisper-panel { top: auto; bottom: 12px; left: 10px; right: 10px; width: auto; max-height: 45%; z-index: 9; }
+  .log-panel, .whisper-panel, .radio-panel, .whisper-panel:not(.hidden) ~ .radio-panel { top: auto; bottom: 12px; left: 10px; right: 10px; width: auto; max-height: 45%; z-index: 9; }
   .qgrid { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .qgrid .btn { font-size: 13px; padding: 6px 8px; }
   .panel { padding: 10px; }

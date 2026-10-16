@@ -1,12 +1,12 @@
 // The Last Soak - authoritative room state machine.
-// Lobby → Detective offer → Cinematic → Briefing → Investigation (accusation loops) → Reveal.
+// Lobby (host may pick roles) → Detective offer (skipped when the host picked a lead) → Cinematic → Briefing → Investigation (accusation loops) → Reveal.
 import crypto from 'node:crypto';
 import { hearingRatio } from '../shared/layout.js';
 import { maskLine, plain, cleanChat, fill } from './text.js';
 
 export const T = {
   OFFER: 10_000,
-  CINEMATIC: 60_000,
+  CINEMATIC: 73_000, // keep in sync with END in client/cinematic.js
   BRIEFING: 90_000,
   ANSWER: 8_000,
   NPC_MIN: 2_000,
@@ -30,6 +30,8 @@ if (SCALE !== 1) for (const k of Object.keys(T)) if (k !== 'NPC_TIMEOUT_CHANCE')
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 8;
+export const MAX_MURDERERS = 2;
+export const PICKS = ['random', 'lead', 'assistant', 'murderer'];
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const shuffle = (arr) => {
@@ -117,6 +119,7 @@ export class Game {
     if (!p) return;
     for (const k of Object.keys(p.timers)) clearTimeout(p.timers[k]);
     this.players.delete(id);
+    this.picks?.delete(id);
     this.hooks.onRemoved?.(this, p);
     if (this.hostId === id) this.handOverHost();
     if (this.players.size === 0) return this.hooks.onEmpty(this);
@@ -134,6 +137,15 @@ export class Game {
       this.hostId = [...this.players.keys()][0] ?? null;
     }
     this.broadcast();
+  }
+
+  /** Lead or assistant detective. */
+  isDetective(playerId) {
+    return !!playerId && (playerId === this.detectiveId || playerId === this.assistantId);
+  }
+
+  detectives() {
+    return [this.detectiveId, this.assistantId].map((id) => id && this.players.get(id)).filter(Boolean);
   }
 
   seatOf(playerId) {
@@ -164,7 +176,9 @@ export class Game {
   resetToLobby() {
     this.clearTimers();
     this.phase = 'lobby';
+    this.picks = new Map(); // playerId -> 'lead' | 'assistant' | 'murderer' (host's choices; unpicked = random)
     this.detectiveId = null;
+    this.assistantId = null;
     this.variant = null;
     this.murderers = [];
     this.seats = new Map(
@@ -181,6 +195,7 @@ export class Game {
     this.logs = new Map(); // playerId -> entries
     this.calls = [];
     this.whispers = [];
+    this.radio = []; // detective chat: everyone can read it, only the detectives can send
     this.lastWhisperToast = 0;
     this.donut = null;
     this.result = null;
@@ -191,14 +206,46 @@ export class Game {
     }
   }
 
+  /** Host picks a player's role in the lobby. Unpicked players are dealt at random. */
+  setRole(byId, playerId, role) {
+    if (this.phase !== 'lobby') return 'The game has already started.';
+    if (byId !== this.hostId) return 'Only the host can choose roles.';
+    if (!this.players.has(playerId) || !PICKS.includes(role)) return 'Unknown player or role.';
+    if (role === 'random') {
+      this.picks.delete(playerId);
+    } else {
+      if (role === 'murderer' && this.picks.get(playerId) !== 'murderer' && this.pickedIds('murderer').length >= MAX_MURDERERS) {
+        return `There can be at most ${MAX_MURDERERS} murderers.`;
+      }
+      // Only one lead and one assistant: picking someone new frees up the old one.
+      if (role === 'lead' || role === 'assistant') for (const id of this.pickedIds(role)) this.picks.delete(id);
+      this.picks.set(playerId, role);
+    }
+    this.touch();
+    this.broadcast();
+    return null;
+  }
+
+  pickedIds(role) {
+    return [...this.picks].filter(([id, r]) => r === role && this.players.has(id)).map(([id]) => id);
+  }
+
   start(byId) {
     if (this.phase !== 'lobby') return 'Game already started.';
     if (byId !== this.hostId) return 'Only the host can start.';
     const humans = [...this.players.values()];
     if (humans.length < MIN_PLAYERS) return `Need at least ${MIN_PLAYERS} players.`;
     if (humans.length > MAX_PLAYERS) return `At most ${MAX_PLAYERS} players.`;
+    const [lead] = this.pickedIds('lead');
+    const [assistant] = this.pickedIds('assistant');
+    const detectives = assistant ? 2 : 1;
+    if (humans.length - detectives < 1) return 'With an assistant detective you need at least 3 players.';
+    if (lead) return this.assignDetective(lead), null;
+    // Nobody picked as lead: offer the badge to players who weren't given another role.
+    const free = humans.map((p) => p.id).filter((id) => !this.picks.has(id));
+    if (!free.length) return 'Pick a lead detective, or leave someone on 🎲 Random.';
     this.phase = 'offer';
-    this.offer = { order: shuffle(humans.map((p) => p.id)), idx: -1, endsAt: 0 };
+    this.offer = { order: shuffle(free), idx: -1, endsAt: 0 };
     this.nextOffer();
     return null;
   }
@@ -231,16 +278,25 @@ export class Game {
 
   assignDetective(playerId) {
     this.detectiveId = playerId;
+    this.assistantId = this.pickedIds('assistant').find((id) => id !== playerId) ?? null;
     this.offer = null;
     // Deal seats only now, so a quick decline can't hint at a murder card.
-    const suspects = shuffle([...this.players.keys()].filter((id) => id !== playerId));
-    this.variant = suspects.length >= 2 ? '2M' : '1M';
+    const suspects = shuffle([...this.players.keys()].filter((id) => !this.isDetective(id)));
+    const chosen = this.pickedIds('murderer').filter((id) => suspects.includes(id));
+    // The host's murderer picks decide the version; otherwise 2 murderers once there are 2+ human suspects.
+    this.variant = chosen.length ? (chosen.length >= 2 ? '2M' : '1M') : suspects.length >= 2 ? '2M' : '1M';
     this.murderers = this.sc.murderers[this.variant].slice();
     const others = shuffle(this.sc.characters.map((c) => c.id).filter((id) => !this.murderers.includes(id)));
-    const order = [...this.murderers, ...others];
-    suspects.forEach((pid, i) => {
-      this.seats.get(order[i]).playerId = pid;
-    });
+    if (chosen.length) {
+      // Picked murderers get the murder seats; everyone else is innocent.
+      chosen.forEach((pid, i) => (this.seats.get(this.murderers[i]).playerId = pid));
+      suspects.filter((id) => !chosen.includes(id)).forEach((pid, i) => (this.seats.get(others[i]).playerId = pid));
+    } else {
+      const order = [...this.murderers, ...others];
+      suspects.forEach((pid, i) => {
+        this.seats.get(order[i]).playerId = pid;
+      });
+    }
     for (const p of this.players.values()) this.logs.set(p.id, []);
     this.phase = 'cinematic';
     this.cinematic = { startAt: Date.now() + 1500, skips: new Set() };
@@ -327,7 +383,7 @@ export class Game {
   // ───────────────────────────── investigation ─────────────────────────────
 
   goTo(byId, roomId) {
-    if (this.phase !== 'investigation' || byId !== this.detectiveId) return;
+    if (this.phase !== 'investigation' || byId !== this.detectiveId) return; // only the lead walks the manor
     if (!this.sc.rooms[roomId] || roomId === this.detLoc) return;
     const from = this.roomCell(this.detLoc);
     const to = this.roomCell(roomId);
@@ -350,7 +406,7 @@ export class Game {
   }
 
   ask(byId, q) {
-    if (this.phase !== 'investigation' || byId !== this.detectiveId || this.donut) return;
+    if (this.phase !== 'investigation' || !this.isDetective(byId) || this.donut) return;
     if (this.pending && !this.pending.resolved) return;
     if (!Number.isInteger(q) || q < 0 || q >= this.sc.questions.length) return;
     if (Date.now() < this.detArriveAt - 100) return;
@@ -450,7 +506,7 @@ export class Game {
     for (const pl of this.players.values()) {
       let text;
       let full = true;
-      if (pl.id === this.detectiveId || pl.id === seat.playerId) text = plain(line);
+      if (this.isDetective(pl.id) || pl.id === seat.playerId) text = plain(line);
       else {
         const mine = this.seatOf(pl.id);
         if (!mine || mine.accused) text = plain(line);
@@ -475,6 +531,7 @@ export class Game {
   }
 
   accuse(byId, charId) {
+    // Only the lead detective can make an arrest.
     if (this.phase !== 'investigation' || byId !== this.detectiveId || this.donut) return;
     const seat = this.seats.get(charId);
     if (!seat || seat.accused) return;
@@ -513,8 +570,7 @@ export class Game {
     const lines = this.sc.calls[key].map((l) => fill(l, vars));
     const call = { id: ++this.seq, key, lines, at: Date.now() };
     this.calls.push(call);
-    const det = this.players.get(this.detectiveId);
-    if (det) this.fx(det, { type: 'call', call });
+    for (const det of this.detectives()) this.fx(det, { type: 'call', call });
   }
 
   // ───────────────────────────── whispers ─────────────────────────────
@@ -549,8 +605,29 @@ export class Game {
     const now = Date.now();
     if (now - this.lastWhisperToast < T.WHISPER_TOAST_GAP) return;
     this.lastWhisperToast = now;
-    const det = this.players.get(this.detectiveId);
-    if (det) this.fx(det, { type: 'toast', tone: 'whisper', text: 'You hear faint whispering somewhere in the mansion…' });
+    for (const det of this.detectives()) this.fx(det, { type: 'toast', tone: 'whisper', text: 'You hear faint whispering somewhere in the mansion…' });
+  }
+
+  // ───────────────────────────── detective radio ─────────────────────────────
+
+  canRadio(playerId) {
+    return !!this.assistantId && this.isDetective(playerId) && ['briefing', 'investigation'].includes(this.phase);
+  }
+
+  /** The two detectives talk over the radio; every player can read it. */
+  radioSay(byId, raw) {
+    if (!this.canRadio(byId)) return;
+    const pl = this.players.get(byId);
+    const now = Date.now();
+    if (pl.lastRadio && now - pl.lastRadio < 600) return;
+    pl.lastRadio = now;
+    const text = cleanChat(raw);
+    if (!text) return;
+    const msg = { id: ++this.seq, from: byId === this.detectiveId ? 'lead' : 'assistant', name: pl.name, text, at: now };
+    this.radio.push(msg);
+    if (this.radio.length > 100) this.radio.shift();
+    this.fxAll({ type: 'radio', msg });
+    this.broadcast();
   }
 
   scheduleFakeWhisper() {
@@ -578,6 +655,7 @@ export class Game {
     else if (outcome === 'dropped') this.addCall('dropped');
     const detWon = outcome === 'detective';
     const det = this.players.get(this.detectiveId);
+    const asst = this.assistantId && this.players.get(this.assistantId);
     const chars = this.sc.characters.map((c) => {
       const s = this.seats.get(c.id);
       const pl = s.playerId ? this.players.get(s.playerId) : null;
@@ -611,6 +689,7 @@ export class Game {
       remaining,
       detective: {
         name: det ? det.name : '???',
+        assistant: asst ? asst.name : this.assistantId ? '???' : null,
         won: detWon,
         badges: detWon && this.strikes === 0 ? ['Clean Case'] : [],
       },
@@ -653,15 +732,36 @@ export class Game {
   viewFor(p) {
     const now = Date.now();
     const seat = this.seatOf(p.id);
-    const isDet = p.id === this.detectiveId;
+    const isDet = this.isDetective(p.id);
+    const isHost = p.id === this.hostId;
+    // In the lobby everyone sees the detective picks; only the host sees who they made a murderer.
+    const pickFor = (id) => {
+      const r = this.picks.get(id);
+      return r === 'murderer' && !isHost ? undefined : r;
+    };
     const v = {
       now,
       code: this.code,
       phase: this.phase,
-      you: { id: p.id, name: p.name, isHost: p.id === this.hostId, role: isDet ? 'detective' : seat ? 'suspect' : null, charId: seat ? seat.id : null },
+      you: {
+        id: p.id,
+        name: p.name,
+        isHost,
+        role: isDet ? 'detective' : seat ? 'suspect' : null,
+        lead: p.id === this.detectiveId,
+        charId: seat ? seat.id : null,
+      },
       players: [...this.players.values()]
         .sort((a, b) => a.joinedAt - b.joinedAt)
-        .map((x) => ({ id: x.id, name: x.name, connected: x.connected, isHost: x.id === this.hostId, isDetective: x.id === this.detectiveId })),
+        .map((x) => ({
+          id: x.id,
+          name: x.name,
+          connected: x.connected,
+          isHost: x.id === this.hostId,
+          isDetective: x.id === this.detectiveId,
+          isAssistant: x.id === this.assistantId,
+          pick: this.phase === 'lobby' ? pickFor(x.id) : undefined,
+        })),
       limits: { min: MIN_PLAYERS, max: MAX_PLAYERS },
       chars: this.sc.characters.map((c) => ({ id: c.id, accused: this.seats.get(c.id).accused })),
     };
@@ -675,6 +775,10 @@ export class Game {
     }
     if (['briefing', 'investigation', 'reveal', 'cinematic'].includes(this.phase)) {
       v.detective = { name: this.players.get(this.detectiveId)?.name ?? '???', loc: this.detLoc, arriveAt: this.detArriveAt };
+      if (this.assistantId) {
+        v.assistant = { name: this.players.get(this.assistantId)?.name ?? '???' };
+        v.radio = { log: this.radio, canSend: this.canRadio(p.id) };
+      }
       v.log = this.logs.get(p.id) || [];
       if (seat) {
         const card = this.sc.cards[seat.id];
