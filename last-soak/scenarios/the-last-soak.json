@@ -53,6 +53,20 @@
     "His new will leaves everything to the Mossbottom Pond Preservation Society. His niece Lulu gets \"my best wishes and a coupon.\""
   ],
 
+  "grudges": {
+    "intro": "Mr. Dan was rich, bossy and selfish. On his birthday he made almost everyone angry.",
+    "list": [
+      { "id": "clementine", "text": "He put his name on her recipes. When she asked for credit, he laughed at her." },
+      { "id": "barnaby", "text": "He wants to dig up Barnaby's vegetable garden to build a spa." },
+      { "id": "lulu", "text": "He took his niece out of his will. She gets a coupon. She shouted at him." },
+      { "id": "pierre", "text": "He did not pay Pierre for three months of piano music." },
+      { "id": "odette", "text": "He was a difficult boss. Now strangers will check all of her money books." },
+      { "id": "gus", "text": "His oldest friend, but they argued about their weekly card game." },
+      { "id": "hazel", "text": "He was rude to Hazel's newspaper. She wants a big story about him." },
+      { "id": "mochi", "text": "The only one who liked him. He was always kind to her." }
+    ]
+  },
+
   "clues": [
     { "clue": "A white feather on Mr. Dan's soaking rock", "icon": "🪶" },
     { "clue": "Muddy pawprints from the vegetable beds to the pond edge, smudged by the sprinklers", "icon": "🐾" },
@@ -75,15 +89,16 @@
   },
 
   "cinematic": [
-    { "at": 0,  "shot": "night",    "caption": "Mossbottom Manor. Mr. Dan's birthday party." },
-    { "at": 6,  "shot": "toast",    "caption": "At nine o'clock, Mr. Dan made three announcements. The launch of his new cookbook. The creation of his grand spa. And an entirely new will." },
-    { "at": 16, "shot": "soak",     "caption": "At half past ten, he went down for his nightly yuzu soak. As always.", "clock": "10:30" },
-    { "at": 22, "shot": "found",    "caption": "At quarter past eleven, Mochi found him. Very much not soaking anymore.", "clock": "11:15" },
-    { "at": 30, "shot": "lockdown", "caption": "The gate was locked all night. Whoever did this is still inside." },
-    { "at": 36, "shot": "police",   "caption": "One detective. Eight suspects. Some are players, some are not, and the detective can't tell which.", "card": "Rule 1" },
-    { "at": 42, "shot": "snippets", "caption": "Suspects: you're locked in your room, but you'll hear snippets of every interrogation. Pick your answers. Lie, dodge, or confess. Keep your secret.", "card": "Rule 2" },
-    { "at": 50, "shot": "accuse",   "caption": "Detective: five minutes. Ask questions, then press ACCUSE. Two wrong guesses and the guilty go free.", "card": "Rule 3" },
-    { "at": 56, "shot": "title",    "caption": "THE LAST SOAK", "title": true }
+    { "at": 0,  "shot": "night",    "caption": "Mossbottom Manor. It is Mr. Dan's birthday party." },
+    { "at": 6,  "shot": "toast",    "caption": "At nine o'clock, Mr. Dan made three big announcements: a new cookbook, a new spa, and a new will." },
+    { "at": 16, "shot": "grudges",  "caption": "Mr. Dan was rich, bossy and selfish. On his birthday he made almost everyone angry. Here is why." },
+    { "at": 28, "shot": "soak",     "caption": "At half past ten, he went down to the pond for his yuzu bath, like every night.", "clock": "10:30" },
+    { "at": 34, "shot": "found",    "caption": "At quarter past eleven, Mochi found him. Mr. Dan was dead.", "clock": "11:15" },
+    { "at": 43, "shot": "lockdown", "caption": "The gate was locked all night. So the killer is still inside." },
+    { "at": 49, "shot": "police",   "caption": "The police are here. Eight suspects. Some are players, some are not, and the detectives can't tell which.", "card": "Rule 1" },
+    { "at": 55, "shot": "snippets", "caption": "Suspects: you are locked in your room, but you hear bits of every interview. Pick your answers. Tell the truth, lie, dodge, or confess. Keep your secret.", "card": "Rule 2" },
+    { "at": 63, "shot": "accuse",   "caption": "Detectives: you have five minutes. Ask questions. When you are sure, the lead detective presses ACCUSE. Two wrong guesses and the killer goes free.", "card": "Rule 3" },
+    { "at": 69, "shot": "title",    "caption": "THE LAST SOAK", "title": true }
   ],
 
   "timeline": [

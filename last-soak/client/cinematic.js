@@ -8,7 +8,8 @@ import { FLOOR_Y, ROAD } from './scene/manor.js';
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const REACT = { clementine: '😤', barnaby: '💢', odette: '😰', pierre: '🍰?!', lulu: '😭', mochi: '💤', gus: '😬', hazel: '📸' };
 const FAKE_SNIPS = ['…his {tea}…', '…{pond}… …kitchen.', '…the {garden door}…', '{cards}… …eleven.', '…{splash}…', '…{white} …', '…the {will}…', '…{pawprints}…'];
-const END = 60;
+const END = 73; // keep in sync with T.CINEMATIC in server/game.js
+const GRUDGE = { first: 1.0, every: 1.25 }; // one card per suspect: why they were angry with Mr. Dan
 // Death scene beats, in seconds from the start of the 'found' shot.
 const FOUND = { reveal: 1.0, walk: 1.3, walkMs: 2400, shock: 3.9, pullBack: 6.4 };
 
@@ -59,6 +60,7 @@ export class Cinematic {
     this.fade(false, true);
     this.lantern?.removeFromParent();
     ['#cineClock', '#cineCard', '#cineTitle'].forEach((s) => $(s).classList.add('hidden'));
+    $('#cineGrudges').innerHTML = '';
   }
 
   restore() {
@@ -138,7 +140,13 @@ export class Cinematic {
         dan.group.rotation.y = Math.PI / 4;
         w.focus(foyer.clone().add(V(0, 1, 0)), 2.6, dt > 0.5);
         break;
+      case 'grudges':
+        $('#cineGrudges').innerHTML = '';
+        dan.group.visible = false;
+        w.focus(V(1, 0, 3), 1.05, dt > 0.5);
+        break;
       case 'soak': {
+        $('#cineGrudges').innerHTML = '';
         dan.group.visible = true;
         dan.setDizzy(false);
         const from = V(0, FLOOR_Y - 0.26, 10.2);
@@ -242,6 +250,11 @@ export class Cinematic {
         });
         break;
       }
+      case 'grudges':
+        (this.meta.grudges?.list ?? []).forEach((gr, i) => {
+          if (dt > GRUDGE.first + i * GRUDGE.every) this.once(`grudge${i}`, () => this.addGrudge(gr));
+        });
+        break;
       case 'soak':
         if (dt > 3.1) this.once('sink', () => {
           w.dan.group.position.y = -0.15;
@@ -346,6 +359,18 @@ export class Cinematic {
       box.innerHTML = '';
       this.meta.characters.forEach((c) => this.addPortrait(c.id));
     }
+  }
+
+  /** One suspect's reason to dislike Mr. Dan, in simple words, plus a hop and a cross face in the house. */
+  addGrudge(gr) {
+    const c = this.meta.characters.find((x) => x.id === gr.id);
+    if (!c) return;
+    const liked = gr.id === 'mochi';
+    $('#cineGrudges').append(el(`<div class="grudge ${liked ? 'liked' : ''}"><img class="portrait sm" src="${this.portraits[gr.id]}" alt="" />
+      <div><b>${esc(c.name)}</b> <small>${esc(c.title)}</small><span>${esc(gr.text)}</span></div></div>`));
+    this.world.critters[gr.id].hop(450);
+    this.anchors.say(gr.id, liked ? '🥺' : '😠', 'shout', 1200);
+    sfx.click();
   }
 
   addPortrait(id) {

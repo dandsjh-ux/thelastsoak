@@ -658,7 +658,9 @@ function openRoles(v, onClose) {
   const m = modal(
     'roles',
     `<div class="storycard roles">
-      <h2 style="margin:0 0 6px">📋 Who's who</h2>
+      <h2 style="margin:0 0 6px">📋 Case briefing</h2>
+      ${meta.grudges ? `<h4>Why nobody liked Mr. Dan</h4><p>${esc(meta.grudges.intro)}</p>
+        <ul class="why">${meta.grudges.list.map((g) => `<li>${P(g.id, 'sm')}<span><b>${esc(CH[g.id].name)}:</b> ${esc(g.text)}</span></li>`).join('')}</ul>` : ''}
       <h4>The detectives</h4>
       <div class="team">
         <div class="member">${P('waffles')}<div><b>${esc(lead)}</b><small>🔎 ${asst ? 'Lead detective' : 'Detective'} · Inspector Waffles</small></div></div>
