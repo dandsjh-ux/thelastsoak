@@ -34,9 +34,13 @@ so a restart or redeploy ends running games; players then see "The game was inte
 | Doc section | Status |
 | --- | --- |
 | Lobby, room codes, invite links, host start (2–8 players) | ✅ |
+| Host picks roles in the lobby: lead detective, assistant detective, up to 2 murderers (or Random) | ✅ |
+| Assistant detective (Constable Biscuit): follows the lead, asks questions, hears answers in full; only the lead walks and ACCUSEs | ✅ |
+| Detective radio: the two detectives chat, every player can read it | ✅ |
+| Case briefing card: why nobody liked Mr. Dan, who the detectives are, your own role | ✅ |
 | Detective offer (10 s, random order, decline passes, last one is assigned), seats dealt after accepting | ✅ |
 | 1-murderer (2 players) and 2-murderer (3+ players) versions, variant cards and lines | ✅ |
-| 60 s opening cinematic from one server start time, all-players-skip, equal reaction shots | ✅ |
+| 73 s opening cinematic from one server start time, all-players-skip, equal reaction shots, grudge cards, fade-to-black death scene, police car up the drive | ✅ |
 | Story cards, opening phone call with the pond clues | ✅ |
 | 3×3 isometric manor, click a room to walk in, clock keeps running | ✅ |
 | 5 questions, 3 answers + Confess, tags visible only to the suspect, 8 s timer, "…uh…" timeout | ✅ |
