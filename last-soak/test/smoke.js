@@ -56,8 +56,9 @@ try {
   await until(() => all.some((c) => c !== first && c.view?.offer?.you), 'second offer');
   const det = all.find((c) => c !== first && c.view.offer.you);
   await det.emit('offerReply', { accept: true });
-  await until(() => det.view.phase === 'cinematic', 'cinematic');
   const sus = all.filter((c) => c !== det);
+  // Each player's view arrives on its own socket: wait for all of them, not just the detective's.
+  await until(() => [det, ...sus].every((c) => c.view?.phase === 'cinematic'), 'cinematic');
   const seats = sus.map((c) => c.view.you.charId).sort();
   assert.deepEqual(seats, ['barnaby', 'clementine'], 'both murderers dealt to humans in 3-player game');
   const detJson = JSON.stringify(det.view);
@@ -156,9 +157,10 @@ try {
   assert.equal(res.chars.find((c) => c.id === 'pierre').human, false);
   assert.ok(res.timeline.some((t) => t.text.includes('waits behind the hedge')));
 
-  // Host restarts.
-  assert.ok((await A.emit('playAgain')).ok);
-  await until(() => A.view.phase === 'lobby', 'back to lobby');
+  // Host restarts. If the host was dealt Barnaby, their seat now lives in the newest tab.
+  const host = [A, B, C, barn3].find((c) => c.s.connected && c.view?.you.isHost);
+  assert.ok((await host.emit('playAgain')).ok);
+  await until(() => host.view.phase === 'lobby', 'back to lobby');
 
   for (const c of [A, B, C, barn3]) c.s.close();
   console.log('✔ 3-player game (2 murderers) passed');
@@ -174,7 +176,7 @@ try {
   const det2 = D.view.offer?.you ? D : E;
   const sus2 = det2 === D ? E : D;
   await det2.emit('offerReply', { accept: true });
-  await until(() => sus2.view?.phase === 'cinematic', 'cinematic 2p');
+  await until(() => sus2.view?.phase === 'cinematic' && det2.view?.phase === 'cinematic', 'cinematic 2p');
   assert.equal(sus2.view.you.charId, 'clementine', 'the only human suspect is the murderer');
   assert.equal(sus2.view.whisper, undefined, 'no whisper chat with one murderer');
   assert.ok(!sus2.view.card.evening.some((e) => e.text.includes('Barnaby')), '1M card');
@@ -225,14 +227,14 @@ try {
   assert.equal(I.view.players.find((p) => p.name === 'Hal').pick, undefined, 'murderer pick hidden from other players');
   assert.equal(H.view.players.find((p) => p.name === 'Hal').pick, 'murderer', 'host sees the murderer pick');
   assert.ok((await H.emit('start')).ok, 'start with picks');
-  await until(() => L.view?.phase === 'cinematic', 'straight to the cinematic (no offer)');
+  await until(() => [H, L, S, I].every((c) => c.view?.phase === 'cinematic'), 'straight to the cinematic (no offer)');
   assert.equal(L.view.you.role, 'detective');
   assert.equal(L.view.you.lead, true);
   assert.equal(S.view.you.role, 'detective');
   assert.equal(S.view.you.lead, false);
   assert.equal(S.view.you.charId, null, 'assistant has no suspect seat');
   assert.equal(H.view.you.charId, 'clementine', 'picked murderer gets the murder seat');
-  assert.notEqual(I.view.you.charId, 'barnaby', 'one picked murderer → 1-murderer version');
+  assert.equal(H.view.whisper, undefined, 'one picked murderer → 1-murderer version (no partner)');
   assert.equal(H.view.card.role, 'MURDERER');
   assert.equal(I.view.card.role, 'INNOCENT');
   assert.equal(I.view.assistant.name, 'Sam', 'everyone sees the assistant');
