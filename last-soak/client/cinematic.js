@@ -50,6 +50,7 @@ export class Cinematic {
     w.dan.setDizzy(false);
     w.dan.group.rotation.set(0, Math.PI / 4, 0);
     w.detective.group.visible = false;
+    w.assistant.group.visible = false;
     w.policeCar.visible = false;
     for (const r of Object.values(w.rooms)) r.dark.material.opacity = 0;
     this.lantern?.removeFromParent();
@@ -59,6 +60,7 @@ export class Cinematic {
   restore() {
     const w = this.world;
     w.detective.group.visible = true;
+    w.assistant.group.visible = w.hasAssistant;
     w.placeDetective('foyer');
     w.policeCar.visible = true;
     w.policeCar.position.set(15.8, 0, 2.6);

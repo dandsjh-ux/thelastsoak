@@ -9,10 +9,10 @@ export class Anchors {
     this.tags = {};
     this.bubbles = {};
     this.timers = {};
-    const all = { ...world.critters, dan: world.dan, waffles: world.detective };
+    const all = { ...world.critters, dan: world.dan, waffles: world.detective, biscuit: world.assistant };
     this.objs = all;
     for (const [id, k] of Object.entries(all)) {
-      const name = id === 'dan' ? meta.victim.name : id === 'waffles' ? 'Insp. Waffles' : meta.characters.find((c) => c.id === id).name;
+      const name = id === 'dan' ? meta.victim.name : id === 'waffles' ? 'Insp. Waffles' : id === 'biscuit' ? 'Const. Biscuit' : meta.characters.find((c) => c.id === id).name;
       const tag = el(`<div class="anchor"><div class="nametag">${esc(name)}</div></div>`);
       this.root.append(tag);
       world.anchor(tag, k.group, 2.05);

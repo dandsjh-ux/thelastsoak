@@ -3,6 +3,7 @@
   "title": "The Last Soak",
   "victim": { "id": "dan", "name": "Mr. Dan", "species": "capybara" },
   "detective": { "id": "waffles", "name": "Inspector Waffles", "species": "corgi" },
+  "assistant": { "id": "biscuit", "name": "Constable Biscuit", "species": "beagle" },
   "boss": { "id": "prickles", "name": "Chief Inspector Prickles", "species": "hedgehog" },
 
   "rooms": {

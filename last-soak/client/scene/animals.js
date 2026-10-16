@@ -185,20 +185,27 @@ const BUILDERS = {
     return b;
   },
   corgi(p) {
-    const b = base({ body: '#f0a04b', head: '#f0a04b', belly: '#fffaf0', feet: '#fffaf0', arms: '#f0a04b' });
+    const coat = p.coat || '#f0a04b';
+    const b = base({ body: coat, head: coat, belly: '#fffaf0', feet: '#fffaf0', arms: coat });
     b.headGroup.add(mesh(G.sphere(0.27, 14, 10), '#fffaf0', 0, -0.12, 0.28, { s: [1.15, 0.75, 0.85] }));
     b.headGroup.add(mesh(G.sphere(0.06, 8, 6), INK, 0, -0.04, 0.53));
     smile(b, -0.16, 0.48, 0.05);
     for (const s of [-1, 1]) {
-      b.headGroup.add(outline(mesh(G.cone(0.17, 0.4, 4), '#f0a04b', s * 0.3, 0.48, 0, { r: [0, Math.PI / 4, -s * 0.3] })));
-      b.headGroup.add(mesh(G.cone(0.09, 0.24, 4), '#ffd6c2', s * 0.29, 0.44, 0.07, { r: [0, Math.PI / 4, -s * 0.3], shadow: false }));
+      if (p.floppy) {
+        // beagle: long ears hanging beside the face
+        b.headGroup.add(outline(mesh(G.sphere(0.17, 12, 10), p.ears || '#7a4a2a', s * 0.45, -0.05, 0, { s: [0.55, 1.5, 0.9], r: [0, 0, s * 0.15] })));
+      } else {
+        b.headGroup.add(outline(mesh(G.cone(0.17, 0.4, 4), coat, s * 0.3, 0.48, 0, { r: [0, Math.PI / 4, -s * 0.3] })));
+        b.headGroup.add(mesh(G.cone(0.09, 0.24, 4), '#ffd6c2', s * 0.29, 0.44, 0.07, { r: [0, Math.PI / 4, -s * 0.3], shadow: false }));
+      }
     }
     b.rig.add(mesh(G.sphere(0.12, 10, 8), '#fffaf0', 0, 0.45, -0.45));
     if (p.police) {
-      b.headGroup.add(mesh(G.cyl(0.33, 0.3, 0.18), '#2d4a8a', 0, 0.44, -0.04, { r: [-0.12, 0, 0] }));
+      const hat = p.hat || '#2d4a8a';
+      b.headGroup.add(mesh(G.cyl(0.33, 0.3, 0.18), hat, 0, 0.44, -0.04, { r: [-0.12, 0, 0] }));
       b.headGroup.add(mesh(G.box(0.36, 0.04, 0.2, 0.02), '#1d2b52', 0, 0.36, 0.3, { r: [0.25, 0, 0] }));
       b.headGroup.add(mesh(G.sphere(0.055, 8, 6), '#f2c94c', 0, 0.46, 0.3));
-      b.rig.add(mesh(G.cyl(0.47, 0.47, 0.06, 18), '#2d4a8a', 0, 0.8, 0, { s: [1, 1, 0.9] }));
+      b.rig.add(mesh(G.cyl(0.47, 0.47, 0.06, 18), hat, 0, 0.8, 0, { s: [1, 1, 0.9] }));
     }
     return b;
   },
@@ -234,6 +241,7 @@ export const LOOKS = {
   hazel: { species: 'squirrel', camera: true },
   dan: { species: 'capybara', yuzu: true },
   waffles: { species: 'corgi', police: true },
+  biscuit: { species: 'corgi', police: true, floppy: true, coat: '#e9b878', ears: '#8a5a34', hat: '#4f78c4' },
   prickles: { species: 'hedgehog' },
 };
 

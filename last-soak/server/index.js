@@ -20,8 +20,8 @@ const app = express();
 app.disable('x-powered-by');
 app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: games.size }));
 // Public slice of the scenario only: no dialogue, cards, murderers or timeline ever reach the browser this way.
-const publicScenario = (({ title, rooms, characters, questions, toast, opening, cinematic, victim, detective, boss }) => ({
-  title, rooms, characters, questions, toast, opening, cinematic, victim, detective, boss,
+const publicScenario = (({ title, rooms, characters, questions, toast, opening, cinematic, victim, detective, assistant, boss, grudges }) => ({
+  title, rooms, characters, questions, toast, opening, cinematic, victim, detective, assistant, boss, grudges,
 }))(scenario);
 app.get('/api/scenario', (_req, res) => res.json(publicScenario));
 
@@ -148,6 +148,7 @@ io.on('connection', (socket) => {
       }
     });
 
+  on('setRole', (g, p, d) => g.setRole(p.id, String(d.playerId), String(d.role)));
   on('start', (g, p) => g.start(p.id));
   on('offerReply', (g, p, d) => g.offerReply(p.id, !!d.accept));
   on('skipCinematic', (g, p) => g.skipCinematic(p.id));
@@ -157,6 +158,7 @@ io.on('connection', (socket) => {
   on('answer', (g, p, d) => g.answer(p.id, d.choice === 'confess' ? 'confess' : Number(d.choice)));
   on('accuse', (g, p, d) => g.accuse(p.id, String(d.charId)));
   on('whisper', (g, p, d) => g.whisper(p.id, d.text));
+  on('radio', (g, p, d) => g.radioSay(p.id, d.text));
   on('playAgain', (g, p) => g.playAgain(p.id));
 
   socket.on('disconnect', () => {

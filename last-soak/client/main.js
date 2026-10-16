@@ -23,7 +23,7 @@ const store = {
 
 const meta = await fetch('/api/scenario').then((r) => r.json());
 const CH = Object.fromEntries(meta.characters.map((c) => [c.id, c]));
-const portraits = makePortraits([...meta.characters.map((c) => c.id), 'dan', 'waffles', 'prickles']);
+const portraits = makePortraits([...meta.characters.map((c) => c.id), 'dan', 'waffles', 'biscuit', 'prickles']);
 const world = new World($('#scene'), meta);
 const anchors = new Anchors(world, meta);
 const cine = new Cinematic(world, anchors, meta, portraits);
@@ -35,7 +35,8 @@ let offset = 0; // server clock - local clock
 let kicked = false;
 const seen = new Set(); // one-shot UI moments (story card, phone call…) per game
 const serverNow = () => Date.now() + offset;
-const isDet = () => V?.you.role === 'detective';
+const isDet = () => V?.you.role === 'detective'; // lead or assistant
+const isLead = () => isDet() && !!V?.you.lead;
 const roomName = (id) => meta.rooms[id]?.name ?? id;
 const P = (id, cls = '') => `<img class="portrait ${cls}" src="${portraits[id]}" alt="" />`;
 
@@ -159,6 +160,7 @@ function leaveToHome() {
   history.replaceState(null, '', location.pathname);
   show('home');
   for (const id of Object.keys(world.critters)) world.returnHome(id);
+  world.setAssistant(false);
   world.placeDetective('foyer');
   world.overview();
   renderTags();
@@ -173,26 +175,47 @@ function show(screen) {
   if (!game) {
     $('#logPanel').classList.add('hidden');
     $('#whisperPanel').classList.add('hidden');
+    $('#radioPanel').classList.add('hidden');
     $('#banner').classList.add('hidden');
   }
   $('#reveal')?.classList.toggle('hidden', screen !== 'reveal');
 }
 
+const PICK_LABEL = { random: '🎲 Random', lead: '🔎 Lead detective', assistant: '🕵️ Assistant detective', murderer: '🔪 Murderer' };
+
 function renderLobby(v) {
   show('lobby');
   $('#lobbyCode').textContent = v.code;
+  const host = v.you.isHost;
+  // The host picks roles; everyone else sees the detective picks (murderer picks stay secret).
+  const pickCell = (p) => {
+    if (host) {
+      return `<select class="pick" data-player="${p.id}" aria-label="Role for ${esc(p.name)}">${Object.entries(PICK_LABEL)
+        .map(([k, label]) => `<option value="${k}" ${(p.pick || 'random') === k ? 'selected' : ''}>${label}</option>`)
+        .join('')}</select>`;
+    }
+    return p.pick === 'lead' || p.pick === 'assistant' ? `<span class="pickx">${PICK_LABEL[p.pick]}</span>` : '';
+  };
   $('#playerList').innerHTML = v.players
-    .map((p) => `<li class="${p.connected ? '' : 'off'}"><span class="dot"></span>${esc(p.name)}${p.id === v.you.id ? ' <small>(you)</small>' : ''}<span class="tagx">${p.isHost ? '👑 host' : p.connected ? '' : 'reconnecting…'}</span></li>`)
+    .map((p) => `<li class="${p.connected ? '' : 'off'}"><span class="dot"></span><span class="pname">${esc(p.name)}${p.id === v.you.id ? ' <small>(you)</small>' : ''}</span>${pickCell(p)}<span class="tagx">${p.isHost ? '👑 host' : p.connected ? '' : 'reconnecting…'}</span></li>`)
     .join('');
+  $('#playerList').querySelectorAll('select.pick').forEach((sel) => (sel.onchange = async () => {
+    const r = await emit('setRole', { playerId: sel.dataset.player, role: sel.value });
+    if (!r.ok) {
+      toast(r.error);
+      renderLobby(V);
+    }
+  }));
   const n = v.players.length;
-  const host = v.players.find((p) => p.isHost);
-  $('#startBtn').classList.toggle('hidden', !v.you.isHost);
+  const hostP = v.players.find((p) => p.isHost);
+  const picks = v.players.map((p) => p.pick).filter(Boolean);
+  $('#startBtn').classList.toggle('hidden', !host);
   $('#startBtn').disabled = n < v.limits.min || n > v.limits.max;
-  $('#lobbyHint').textContent = v.you.isHost
+  $('#lobbyHint').textContent = host
     ? n < v.limits.min
       ? `Waiting for at least ${v.limits.min} players… share the code!`
-      : `${n} players. Press Start and a random player gets offered the detective badge.`
-    : `Waiting for ${host?.name ?? 'the host'} to start… (${n}/${v.limits.max})`;
+      : `${n} players. Choose roles (up to 2 detectives and 2 murderers), or leave them on 🎲 Random.${picks.includes('lead') ? '' : ' A random player gets offered the lead detective badge.'}`
+    : `Waiting for ${hostP?.name ?? 'the host'} to start… (${n}/${v.limits.max})`;
 }
 
 // ───────────────────────────── main render ─────────────────────────────
@@ -206,6 +229,7 @@ function render(prev, v) {
       closeAllModals();
       anchors.clearAll();
       for (const id of Object.keys(world.critters)) world.returnHome(id);
+      world.setAssistant(false);
       world.placeDetective('foyer');
       world.overview();
       $('#reveal')?.remove();
@@ -224,6 +248,9 @@ function render(prev, v) {
   }
 
   show('game');
+  // The cinematic decides when the assistant appears; outside it they show whenever there is one.
+  if (cine.running) world.hasAssistant = !!v.assistant;
+  else world.setAssistant(!!v.assistant);
   syncWorld(v);
 
   if (v.phase === 'offer') renderOffer(v);
@@ -250,8 +277,12 @@ function render(prev, v) {
     }
     if (v.phase === 'briefing' && !seen.has('brief')) {
       seen.add('brief');
-      if (v.card) openStoryCard(v, true);
-      if (isDet() && v.calls?.length) openCall(v.calls[0], true);
+      // Everyone first sees who the detectives are and what their own role is.
+      openRoles(v, () => {
+        if (!V || V.phase === 'reveal' || V.phase === 'lobby') return;
+        if (V.card) openStoryCard(V, true);
+        if (isDet() && V.calls?.length && V.phase === 'briefing') openCall(V.calls[0], true);
+      });
     }
     if (v.phase === 'investigation' && isDet()) closeModal('phone-opening');
   }
@@ -260,6 +291,7 @@ function render(prev, v) {
   renderPanel(v);
   renderLog(v);
   renderWhisper(v);
+  renderRadio(v);
   renderTags();
 }
 
@@ -292,6 +324,8 @@ function renderTags() {
   }
   const detName = V?.detective?.name;
   anchors.setTag('waffles', detName ? `🔎 ${detName}` : 'Insp. Waffles', 'det');
+  const asstName = V?.assistant?.name;
+  anchors.setTag('biscuit', asstName ? `🕵️ ${asstName}` : 'Const. Biscuit', 'det');
 }
 
 // ───────────────────────────── offer ─────────────────────────────
@@ -330,7 +364,7 @@ function renderOffer(v) {
 function renderHud(v) {
   $('#hudCode').textContent = v.code;
   const who = $('#hudWho');
-  if (isDet()) who.innerHTML = '🔎 You are the detective';
+  if (isDet()) who.innerHTML = isLead() ? (v.assistant ? '🔎 You are the lead detective' : '🔎 You are the detective') : '🕵️ You are the assistant detective';
   else if (v.you.charId) who.innerHTML = `⭐ You are ${esc(CH[v.you.charId].name)}`;
   else who.textContent = '';
   $('#strikes').textContent = v.clock ? `${'❌'.repeat(v.clock.strikes)}${'⚪'.repeat(Math.max(0, 2 - v.clock.strikes))}` : '';
@@ -393,8 +427,8 @@ function renderPanel(v) {
   const panel = $('#panel');
   if (v.phase === 'briefing') {
     panel.innerHTML = isDet()
-      ? `<div class="who">${P('waffles')}<div class="grow"><h3>Inspector Waffles</h3><p>Finish the call with the Chief to start the clock.</p></div>
-         <button class="btn" data-act="call">📞 Phone</button></div>`
+      ? `<div class="who">${P(isLead() ? 'waffles' : 'biscuit')}<div class="grow"><h3>${isLead() ? 'Inspector Waffles' : 'Constable Biscuit'}</h3><p>${isLead() ? 'Finish the call with the Chief to start the clock.' : `Listen in on the call. ${esc(v.detective.name)} starts the clock.`}</p></div>
+         <button class="btn" data-act="roles">📋<span class="lbl"> Roles</span></button><button class="btn" data-act="call">📞 Phone</button></div>`
       : suspectWho(v, 'Read your story card. The investigation starts when the detective hangs up.');
     bindPanel();
     return;
@@ -408,7 +442,9 @@ function renderPanel(v) {
 function suspectWho(v, status) {
   const c = CH[v.you.charId];
   return `<div class="who">${P(c.id)}<div class="grow"><h3>You are ${esc(c.name)}</h3><p>${esc(c.title)} · ${esc(roomName(c.room))}</p></div>
+    <button class="btn small" data-act="roles" title="Roles">📋</button>
     <button class="btn small" data-act="story">📜 My story</button>
+    ${v.radio ? '<button class="btn small" data-act="radio" title="Detective radio">📻</button>' : ''}
     ${v.whisper ? '<button class="btn small" data-act="whisper">🤫</button>' : ''}</div>
     <p class="status">${status}</p>`;
 }
@@ -420,13 +456,16 @@ function renderDetectivePanel(v) {
   clearTimeout(arriveTimer);
   if (walking) arriveTimer = setTimeout(() => V && renderPanel(V), v.detective.arriveAt - serverNow() + 30);
   const suspect = meta.characters.find((c) => c.room === loc);
-  const caseBtn = '<button class="btn small" data-act="case">📋<span class="lbl"> Case file</span></button>';
+  const lead = isLead();
+  const me = lead ? 'waffles' : 'biscuit';
+  const caseBtn = `<button class="btn small" data-act="case">📋<span class="lbl"> Case file</span></button>${v.radio ? '<button class="btn small" data-act="radio" title="Detective radio">📻</button>' : ''}`;
   if (walking) {
-    panel.innerHTML = `<div class="who">${P('waffles')}<div class="grow"><h3>Walking to the ${esc(roomName(loc))}…</h3><p>The clock keeps ticking!</p></div>${caseBtn}</div>`;
+    panel.innerHTML = `<div class="who">${P(me)}<div class="grow"><h3>Walking to the ${esc(roomName(loc))}…</h3><p>The clock keeps ticking!</p></div>${caseBtn}</div>`;
     return;
   }
   if (!suspect) {
-    panel.innerHTML = `<div class="who">${P('waffles')}<div class="grow"><h3>The Foyer</h3><p>Tap a room to walk in and question its suspect.</p></div>${caseBtn}</div>`;
+    const hint = lead ? 'Tap a room to walk in and question its suspect.' : `You follow ${esc(v.detective.name)}. Use the 📻 radio to suggest a room.`;
+    panel.innerHTML = `<div class="who">${P(me)}<div class="grow"><h3>The Foyer</h3><p>${hint}</p></div>${caseBtn}</div>`;
     return;
   }
   const accused = v.chars.find((c) => c.id === suspect.id).accused;
@@ -436,11 +475,14 @@ function renderDetectivePanel(v) {
   }
   const busy = !!v.pending;
   const paused = !!v.donut;
+  // Only the lead detective can arrest; the assistant can still ask questions.
+  const accuseBtn = lead ? `<button class="btn accuse" data-act="accuse" ${busy || paused ? 'disabled' : ''}>🚨 ACCUSE</button>` : '';
+  const idle = lead ? 'Pick a question. Tap another room to move on.' : `Pick a question. Only ${esc(v.detective.name)} can ACCUSE or change rooms.`;
   panel.innerHTML = `
     <div class="who">${P(suspect.id)}<div class="grow"><h3>${esc(suspect.name)}</h3><p>${esc(suspect.title)} · ${esc(roomName(loc))}</p></div>
-      ${caseBtn}<button class="btn accuse" data-act="accuse" ${busy || paused ? 'disabled' : ''}>🚨 ACCUSE</button></div>
+      ${caseBtn}${accuseBtn}</div>
     <div class="qgrid">${meta.questions.map((q, i) => `<button class="btn" data-q="${i}" title="${esc(q.text)}" ${busy || paused ? 'disabled' : ''}>${['📍', '👀', '🥂', '🪶', '🤔'][i]} ${esc(q.short)}</button>`).join('')}</div>
-    <p class="status">${busy ? `${esc(suspect.name)} is thinking…` : 'Pick a question. Tap another room to move on.'}</p>`;
+    <p class="status">${busy ? `${esc(suspect.name)} is thinking…` : idle}</p>`;
 }
 
 function renderSuspectPanel(v) {
@@ -485,6 +527,8 @@ function bindPanel() {
     const act = b.dataset.act;
     if (act === 'story') openStoryCard(V, false);
     if (act === 'whisper') $('#whisperPanel').classList.toggle('hidden');
+    if (act === 'radio') $('#radioPanel').classList.toggle('hidden');
+    if (act === 'roles') openRoles(V);
     if (act === 'case') openCaseFile(V);
     if (act === 'call') openCall(V.calls[0], V.phase === 'briefing');
     if (act === 'accuse') confirmAccuse(V);
@@ -492,6 +536,7 @@ function bindPanel() {
 }
 
 function confirmAccuse(v) {
+  if (!isLead()) return;
   const suspect = meta.characters.find((c) => c.room === v.detective.loc);
   if (!suspect) return;
   const m = modal(
@@ -556,6 +601,78 @@ $('#whisperForm').onsubmit = (e) => {
   $('#whisperInput').value = '';
 };
 
+let radioCount = -1;
+function renderRadio(v) {
+  const panel = $('#radioPanel');
+  if (!v.radio) {
+    panel.classList.add('hidden');
+    return;
+  }
+  const input = $('#radioInput');
+  const form = $('#radioForm');
+  form.classList.toggle('hidden', !isDet());
+  input.disabled = !v.radio.canSend;
+  input.placeholder = isLead() ? `Talk to ${v.assistant.name}… (everyone can hear)` : `Talk to ${v.detective.name}… (everyone can hear)`;
+  $('#radioNote').textContent = isDet() ? 'Everyone can hear the radio.' : 'You can listen in on the detectives.';
+  if (!seen.has('radioOpen') && window.innerWidth > 640 && ['briefing', 'investigation'].includes(v.phase)) {
+    seen.add('radioOpen');
+    panel.classList.remove('hidden');
+  }
+  if (v.radio.log.length === radioCount) return;
+  radioCount = v.radio.log.length;
+  $('#radioList').innerHTML = v.radio.log.length
+    ? v.radio.log.map((m) => `<li class="${m.from} ${isDet() && (m.from === 'lead') === isLead() ? 'me' : ''}">${P(m.from === 'lead' ? 'waffles' : 'biscuit', 'sm')}<span><b>${esc(m.name)}:</b> ${esc(m.text)}</span></li>`).join('')
+    : `<li class="empty">${isDet() ? 'Share ideas with your partner here.' : 'Nothing on the radio yet.'}</li>`;
+  $('#radioList').scrollTop = 1e6;
+}
+
+$('#radioForm').onsubmit = (e) => {
+  e.preventDefault();
+  const t = $('#radioInput').value.trim();
+  if (!t) return;
+  emit('radio', { text: t });
+  $('#radioInput').value = '';
+};
+
+// ───────────────────────────── roles ─────────────────────────────
+
+/** Who's who: the detectives (everyone sees them) and this player's own role. */
+function openRoles(v, onClose) {
+  const lead = v.detective?.name ?? '???';
+  const asst = v.assistant?.name;
+  let mine;
+  if (isLead()) {
+    mine = `${P('waffles', 'lg')}<div><small>Your role</small><h2>${asst ? 'Lead detective' : 'Detective'}</h2>
+      <p>You are <b>Inspector Waffles</b>. Walk the manor, ask questions and find out who did it. <b>Only you can ACCUSE.</b>${asst ? ` ${esc(asst)} is your assistant. Talk on the 📻 radio. Everyone can hear it!` : ''}</p></div>`;
+  } else if (isDet()) {
+    mine = `${P('biscuit', 'lg')}<div><small>Your role</small><h2>Assistant detective</h2>
+      <p>You are <b>Constable Biscuit</b>. You follow ${esc(lead)} and hear every answer clearly. You can ask questions too. Talk to ${esc(lead)} on the 📻 radio. <b>Only ${esc(lead)} can ACCUSE.</b> Everyone can hear the radio!</p></div>`;
+  } else if (v.you.charId) {
+    const c = CH[v.you.charId];
+    const bad = v.card?.role === 'MURDERER';
+    mine = `${P(c.id, 'lg')}<div><small>Your role</small><h2>${esc(c.name)} <span class="role ${bad ? 'bad' : ''}">${bad ? '🔪 MURDERER' : '😇 INNOCENT'}</span></h2>
+      <p>${bad
+        ? `You did it. Don't get caught!${v.partner ? ` Your partner in crime is <b>${esc(CH[v.partner].name)}</b>. Use the 🤫 whisper chat. Only the two of you can read it.` : ''}`
+        : 'You did not do it. Answer the detectives, but try to keep your secret.'}</p></div>`;
+  }
+  const m = modal(
+    'roles',
+    `<div class="storycard roles">
+      <h2 style="margin:0 0 6px">📋 Who's who</h2>
+      <h4>The detectives</h4>
+      <div class="team">
+        <div class="member">${P('waffles')}<div><b>${esc(lead)}</b><small>🔎 ${asst ? 'Lead detective' : 'Detective'} · Inspector Waffles</small></div></div>
+        ${asst ? `<div class="member">${P('biscuit')}<div><b>${esc(asst)}</b><small>🕵️ Assistant detective · Constable Biscuit</small></div></div>` : ''}
+      </div>
+      <p class="hint">Everyone else is a suspect. The detectives don't know which suspects are players.</p>
+      ${mine ? `<h4>You</h4><div class="head mine">${mine}</div>` : ''}
+      <div class="actions"><button class="btn primary" data-dismiss>Got it</button></div>
+    </div>`,
+    { onClose },
+  );
+  return m;
+}
+
 // ───────────────────────────── cards + phone ─────────────────────────────
 
 function openStoryCard(v, first) {
@@ -590,8 +707,8 @@ function openCall(call, opening) {
     key,
     `<div class="phone"><div class="caller ringing">${P('prickles', 'lg')}<div><small>📞 Incoming call…</small><h2>Chief Inspector Prickles</h2></div></div>
       <div class="lines" id="callLines"></div>
-      <div class="actions">${opening ? '<button class="btn primary big" id="hangUp">☎️ Hang up & start the clock</button>' : '<button class="btn primary" data-dismiss>☎️ Hang up</button>'}</div></div>`,
-    { dismissable: !opening },
+      <div class="actions">${opening && isLead() ? '<button class="btn primary big" id="hangUp">☎️ Hang up & start the clock</button>' : '<button class="btn primary" data-dismiss>☎️ Hang up</button>'}</div></div>`,
+    { dismissable: !(opening && isLead()) },
   );
   const box = $('#callLines', m.el);
   const caller = $('.caller', m.el);
@@ -649,6 +766,7 @@ function onFx(f) {
       if (V.you.charId === f.charId) {
         // Get anything out of the way of the answer buttons.
         closeModal('story');
+        closeModal('roles');
         sfx.ring();
       }
       break;
@@ -674,6 +792,9 @@ function onFx(f) {
       break;
     case 'call':
       if (f.call.key !== 'opening' && !['win', 'loseStrikes', 'loseTime', 'dropped'].includes(f.call.key)) openCall(f.call, false);
+      break;
+    case 'radio':
+      if ($('#radioPanel').classList.contains('hidden') && !(isDet() && (f.msg.from === 'lead') === isLead())) toast(`📻 ${f.msg.name}: ${f.msg.text}`, 'radio');
       break;
     case 'whisper':
       if (f.msg.from !== V.you.charId) {
@@ -710,9 +831,11 @@ function renderReveal(v) {
       <div class="lines">${r.finalCall.map((l) => `<div class="line">${esc(l)}</div>`).join('')}</div></div>
     <h2 style="text-align:center;margin:14px 0 8px">Whodunit: ${esc(culprits)} 🦆${r.murderers.length > 1 ? '🦡' : ''}</h2>
     <div class="reveal-grid">
-      <div class="rc">${P('waffles')}<h4>Inspector Waffles</h4><div class="meta">${esc(r.detective.name)} · detective</div>
+      <div class="rc">${P('waffles')}<h4>Inspector Waffles</h4><div class="meta">${esc(r.detective.name)} · ${r.detective.assistant ? 'lead detective' : 'detective'}</div>
         <div><span class="badge ${r.detective.won ? 'win' : 'lose'}">${r.detective.won ? 'Won' : 'Lost'}</span>${r.detective.badges.map((b) => `<span class="badge">🏅 ${esc(b)}</span>`).join('')}</div>
         <div class="meta">${r.strikes} strike${r.strikes === 1 ? '' : 's'}</div></div>
+      ${r.detective.assistant ? `<div class="rc">${P('biscuit')}<h4>Constable Biscuit</h4><div class="meta">${esc(r.detective.assistant)} · assistant detective</div>
+        <div><span class="badge ${r.detective.won ? 'win' : 'lose'}">${r.detective.won ? 'Won' : 'Lost'}</span></div></div>` : ''}
       ${r.chars
         .map((c) => `<div class="rc ${c.murderer ? 'guilty' : ''}">${P(c.id)}<h4>${esc(CH[c.id].name)}</h4>
           <div class="meta">${c.human ? `👤 ${esc(c.playerName)}` : '🤖 NPC'} · ${c.murderer ? '🔪 murderer' : 'innocent'}</div>
@@ -736,8 +859,8 @@ function renderReveal(v) {
 $('#skipBtn').onclick = () => emit('skipCinematic');
 document.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 
-// Room clicks (detective only).
-world.canPick = () => !!V && V.phase === 'investigation' && isDet() && !V.pending && !V.donut && serverNow() >= V.detective.arriveAt;
+// Room clicks (lead detective only).
+world.canPick = () => !!V && V.phase === 'investigation' && isLead() && !V.pending && !V.donut && serverNow() >= V.detective.arriveAt;
 world.onRoomClick = (id) => {
   if (id !== V.detective.loc) emit('goTo', { room: id });
 };

@@ -121,6 +121,17 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .players li .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--mint); flex: none; }
 .players li.off .dot { background: #c9bfd6; }
 .players li .tagx { margin-left: auto; font-size: 13px; color: var(--ink-soft); }
+.players li .pname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players li select.pick { margin-left: auto; font: inherit; font-size: 13px; padding: 3px 6px; border: 2px solid var(--line); border-radius: 10px; background: var(--paper-2); max-width: 52%; }
+.players li select.pick + .tagx { margin-left: 4px; }
+.players li .pickx { margin-left: auto; font-size: 13px; background: #e6f1ff; border-radius: 8px; padding: 2px 8px; }
+.players li .pickx + .tagx { margin-left: 4px; }
+.roles .team { display: grid; gap: 8px; }
+.roles .member { display: flex; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 14px; padding: 6px 10px; }
+.roles .member small { display: block; color: var(--ink-soft); }
+.roles .head.mine { align-items: flex-start; background: #fff; border: 2px dashed var(--line); border-radius: 14px; padding: 10px; }
+.roles .head.mine h2 { margin: 0 0 4px; }
+.roles .head.mine p { margin: 0; }
 .row { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
 
 /* ───────── HUD ───────── */
@@ -218,23 +229,32 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
 
 /* ───────── side panels ───────── */
-.log-panel, .whisper-panel {
+.log-panel, .whisper-panel, .radio-panel {
   position: fixed; right: 12px; top: 120px; z-index: 6; width: min(330px, calc(100% - 24px));
   max-height: calc(100% - 330px); min-height: 160px; display: flex; flex-direction: column;
   background: rgba(255, 250, 242, 0.97); border: 3px solid var(--ink); border-radius: var(--r); box-shadow: var(--shadow);
 }
 .whisper-panel { left: 12px; right: auto; background: #f1ebff; }
-.log-panel header, .whisper-panel header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 2px dashed var(--line); }
+.radio-panel { left: 12px; right: auto; background: #e6f1ff; }
+/* Murderers can have both chats open: stack the radio under the whisper panel. */
+.whisper-panel:not(.hidden) ~ .radio-panel { top: auto; bottom: 230px; max-height: calc(50% - 200px); }
+.whisper-panel:not(.hidden) { max-height: calc(50% - 140px); }
+.log-panel header, .whisper-panel header, .radio-panel header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 2px dashed var(--line); }
 .x { background: none; border: 0; font-size: 16px; cursor: pointer; color: var(--ink-soft); }
-.log-panel ol, .whisper-panel ol { list-style: none; margin: 0; padding: 8px 12px; overflow-y: auto; flex: 1; display: grid; gap: 8px; align-content: start; user-select: text; }
+.log-panel ol, .whisper-panel ol, .radio-panel ol { list-style: none; margin: 0; padding: 8px 12px; overflow-y: auto; flex: 1; display: grid; gap: 8px; align-content: start; user-select: text; }
 .log-panel li { font-size: 14px; line-height: 1.35; }
 .log-panel li .q { color: var(--ink-soft); font-size: 13px; }
 .log-panel li .a { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; }
 .log-panel li.sys { text-align: center; color: var(--red-d); font-weight: 600; }
 .whisper-panel li { font-size: 14px; background: #fff; border-radius: 12px; padding: 6px 10px; }
 .whisper-panel li.me { background: #dcd0ff; justify-self: end; }
-.whisper-panel form { display: flex; gap: 6px; padding: 8px; }
-.whisper-panel input { font-size: 15px; padding: 6px 10px; border-width: 2px; }
+.whisper-panel form, .radio-panel form { display: flex; gap: 6px; padding: 8px; }
+.whisper-panel input, .radio-panel input { font-size: 15px; padding: 6px 10px; border-width: 2px; }
+.radio-note { margin: 6px 12px 0; font-size: 12px; color: var(--ink-soft); }
+.radio-panel li { font-size: 14px; background: #fff; border-radius: 12px; padding: 6px 10px; display: flex; gap: 6px; align-items: flex-start; }
+.radio-panel li.assistant { background: #fff6e0; }
+.radio-panel li.me { outline: 2px solid #9fc3ff; }
+.radio-panel li.empty { background: none; color: var(--ink-soft); }
 
 /* ───────── modals ───────── */
 .modal-back { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(27, 22, 64, 0.55); animation: fade 0.2s; }
@@ -273,6 +293,7 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .toast { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; padding: 8px 14px; font-weight: 600; text-align: center; box-shadow: 0 4px 0 var(--ink); animation: pop 0.25s; }
 .toast.whisper { background: #efe9ff; font-style: italic; }
 .toast.detective { background: #cfe0ff; }
+.toast.radio { background: #e6f1ff; }
 .toast.station { background: #ffd6da; }
 .overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(27, 22, 64, 0.7); }
 .overlay .card { text-align: center; min-width: 220px; }
@@ -319,7 +340,7 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 @media (max-width: 640px) {
   #clock { font-size: 26px; min-width: 86px; }
   .hud-left .pill:not(.code) { display: none; }
-  .log-panel, .whisper-panel { top: auto; bottom: 12px; left: 10px; right: 10px; width: auto; max-height: 45%; z-index: 9; }
+  .log-panel, .whisper-panel, .radio-panel, .whisper-panel:not(.hidden) ~ .radio-panel { top: auto; bottom: 12px; left: 10px; right: 10px; width: auto; max-height: 45%; z-index: 9; }
   .qgrid { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .qgrid .btn { font-size: 13px; padding: 6px 8px; }
   .panel { padding: 10px; }
