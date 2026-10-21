@@ -1,6 +1,7 @@
 # 🐰 Word Chase
 
 > Also in this repo: **[The Last Soak](last-soak/README.md)**, a cutesy isometric multiplayer whodunit (`last-soak/`).
+> Also in this repo: **[Survive The Explosion](survive-the-explosion/README.md)**, a single-player three.js game about how powerful explosions are and which materials keep a house safe (`survive-the-explosion/`).
 
 A cute multiplayer 3D tag game built with **three.js** where players run around a cartoon neighbourhood collecting words that fit a category (Year 5/6 vocabulary), while dodging the tagger.
 
