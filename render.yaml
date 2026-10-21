@@ -27,3 +27,13 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
+  - type: web
+    name: survive-the-explosion
+    runtime: static
+    rootDir: survive-the-explosion
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

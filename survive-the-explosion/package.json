@@ -1,0 +1,18 @@
+{
+  "name": "survive-the-explosion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Survive The Explosion - a three.js game about how powerful different explosions are, and which materials keep a house safe",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "three": "^0.186.1",
+    "vite": "^8.3.2"
+  }
+}
