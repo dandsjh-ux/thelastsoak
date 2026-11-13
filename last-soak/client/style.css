@@ -112,7 +112,19 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .howto { text-align: left; margin-top: 12px; background: var(--paper-2); border-radius: 14px; padding: 8px 12px; }
 .howto summary { cursor: pointer; font-weight: 600; }
 .howto ul { padding-left: 18px; margin: 8px 0; line-height: 1.4; font-size: 15px; }
+.howto-note { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
 .lobby-card { width: min(460px, 100%); }
+.mode-box { margin-top: 12px; background: var(--paper-2); border-radius: 16px; padding: 10px 12px; }
+.mode-box .mode-label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.mode-box .hint { margin: 8px 0 0; font-size: 14px; line-height: 1.35; }
+.seg { display: flex; gap: 6px; }
+.seg-btn {
+  flex: 1; font: inherit; font-weight: 600; font-size: 15px; color: var(--ink);
+  background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 7px 8px; cursor: pointer;
+}
+.seg-btn.on { background: var(--mint); border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.seg-btn:disabled { cursor: default; opacity: 1; }
+.seg-btn:disabled:not(.on) { opacity: 0.55; }
 .lobby-card h2 { margin: 0 0 10px; text-align: center; }
 .code-box { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; background: var(--paper-2); border-radius: 16px; padding: 10px; }
 .code-box b { font-size: 34px; letter-spacing: 8px; }
@@ -277,6 +289,7 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .storycard ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
 .storycard li { display: grid; grid-template-columns: 70px 1fr; gap: 8px; line-height: 1.35; }
 .storycard li b { color: var(--ink-soft); }
+.storycard .motive { background: #fff1a8; border: 2px solid var(--sun); border-radius: 12px; padding: 8px 10px; font-weight: 600; }
 .storycard .secret { background: #efe9ff; border: 2px dashed var(--lilac); border-radius: 12px; padding: 8px 10px; margin-top: 10px; }
 .storycard .toast-list { font-size: 14px; background: var(--paper-2); border-radius: 12px; padding: 8px 10px; }
 .storycard .toast-list ol { margin: 0; padding-left: 18px; }

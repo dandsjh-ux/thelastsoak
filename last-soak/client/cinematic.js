@@ -23,6 +23,12 @@ export class Cinematic {
     this.running = false;
   }
 
+  /** Swap in the other mode's captions and grudge cards (Standard vs Rookie Mode). */
+  setMeta(meta) {
+    this.meta = meta;
+    this.shots = meta.cinematic;
+  }
+
   play(startLocal, onEnd) {
     this.startLocal = startLocal;
     this.onEnd = onEnd;

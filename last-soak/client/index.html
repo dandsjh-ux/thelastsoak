@@ -44,6 +44,16 @@
           <li><b>Suspects:</b> you're locked in your room, but you'll overhear snippets of every interrogation. Pick your answers: truth, lie, dodge, or confess. Keep your secret!</li>
         </ul>
       </details>
+      <details class="howto">
+        <summary>🎒 How to play (Rookie Mode)</summary>
+        <p class="howto-note">Rookie Mode is the same game with shorter, simpler words. The host turns it on in the lobby.</p>
+        <ul>
+          <li><b>2–8 players.</b> One player is <b>Inspector Waffles</b> 🐶, the detective. Every other player secretly plays one of 8 animal suspects. The other suspects are computer characters (NPCs). The detective cannot tell who is a real player.</li>
+          <li><b>Host:</b> in the lobby, pick the detectives (a lead and an assistant) and up to 2 murderers. Or leave everyone on 🎲 Random.</li>
+          <li><b>Detective:</b> you have 5 minutes. Walk into rooms and ask questions. When you are sure, press <b>ACCUSE</b>. If you are wrong twice, the murderers go free. The assistant can ask questions and talk to the lead on the radio. Everyone can hear the radio. Only the lead can ACCUSE.</li>
+          <li><b>Suspects:</b> you are locked in your room, but you can hear bits of every interview. Pick your answers: truth, lie, dodge (avoid the question) or confess. Keep your secret!</li>
+        </ul>
+      </details>
     </div>
   </section>
 
@@ -55,6 +65,11 @@
         <span>Room code</span>
         <b id="lobbyCode">----</b>
         <button id="copyLink" class="btn small">🔗 Copy invite link</button>
+      </div>
+      <div class="mode-box">
+        <span class="mode-label">Game mode</span>
+        <div id="modeBtns" class="seg" role="group" aria-label="Game mode"></div>
+        <p id="modeNote" class="hint"></p>
       </div>
       <ul id="playerList" class="players"></ul>
       <p id="lobbyHint" class="hint"></p>

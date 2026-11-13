@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { hearingRatio } from '../shared/layout.js';
 import { maskLine, plain, cleanChat, fill } from './text.js';
+import { DEFAULT_MODE, isMode, makeT } from '../shared/strings.js';
 
 export const T = {
   OFFER: 10_000,
@@ -48,14 +49,26 @@ const parseTags = (s) => {
 };
 
 export class Game {
-  constructor(code, scenario, hooks) {
+  /** scenarios: { standard, rookie }. The host picks the mode in the lobby; it stays the same across rounds. */
+  constructor(code, scenarios, hooks) {
     this.code = code;
-    this.sc = scenario;
+    this.scenarios = scenarios;
+    this.mode = DEFAULT_MODE;
     this.hooks = hooks; // { send(player, event, data), onEmpty(game) }
     this.players = new Map(); // id -> player
     this.hostId = null;
     this.lastActivity = Date.now();
     this.resetToLobby();
+  }
+
+  /** The scenario for the current mode (Standard or Rookie Mode). */
+  get sc() {
+    return this.scenarios[this.mode];
+  }
+
+  /** In-code text (toasts) for the current mode. */
+  t(key, ...args) {
+    return makeT(this.mode)(key, ...args);
   }
 
   // ───────────────────────────── players & seats ─────────────────────────────
@@ -221,6 +234,17 @@ export class Game {
       if (role === 'lead' || role === 'assistant') for (const id of this.pickedIds(role)) this.picks.delete(id);
       this.picks.set(playerId, role);
     }
+    this.touch();
+    this.broadcast();
+    return null;
+  }
+
+  /** Host picks Standard or Rookie Mode (Year 6 reading level) in the lobby. */
+  setMode(byId, mode) {
+    if (this.phase !== 'lobby') return 'The game has already started.';
+    if (byId !== this.hostId) return 'Only the host can choose the mode.';
+    if (!isMode(mode) || !this.scenarios[mode]) return 'Unknown mode.';
+    this.mode = mode;
     this.touch();
     this.broadcast();
     return null;
@@ -550,7 +574,7 @@ export class Game {
       this.fx(this.players.get(seat.playerId), {
         type: 'toast',
         tone: 'station',
-        text: "You've been taken to the station. You can hear everything clearly now.",
+        text: this.t('stationToast'),
       });
     }
     if (guilty) {
@@ -605,7 +629,7 @@ export class Game {
     const now = Date.now();
     if (now - this.lastWhisperToast < T.WHISPER_TOAST_GAP) return;
     this.lastWhisperToast = now;
-    for (const det of this.detectives()) this.fx(det, { type: 'toast', tone: 'whisper', text: 'You hear faint whispering somewhere in the mansion…' });
+    for (const det of this.detectives()) this.fx(det, { type: 'toast', tone: 'whisper', text: this.t('whisperToast') });
   }
 
   // ───────────────────────────── detective radio ─────────────────────────────
@@ -742,6 +766,7 @@ export class Game {
     const v = {
       now,
       code: this.code,
+      mode: this.mode,
       phase: this.phase,
       you: {
         id: p.id,

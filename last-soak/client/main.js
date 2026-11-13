@@ -6,6 +6,7 @@ import { Anchors } from './ui/anchors.js';
 import { Cinematic } from './cinematic.js';
 import { $, $$, esc, el, fmt, toast, modal, closeModal, hasModal, closeAllModals, snippet } from './ui/dom.js';
 import { sfx } from './ui/sfx.js';
+import { DEFAULT_MODE, MODES, MODE_INFO, makeT } from '../shared/strings.js';
 
 const SEAT_KEY = 'soak.seat';
 const NAME_KEY = 'soak.name';
@@ -21,7 +22,11 @@ const store = {
   },
 };
 
-const meta = await fetch('/api/scenario').then((r) => r.json());
+// Both stories load up front. The host picks the mode in the lobby and everyone follows it.
+const metas = Object.fromEntries(await Promise.all(MODES.map(async (m) => [m, await fetch(`/api/scenario?mode=${m}`).then((r) => r.json())])));
+let mode = DEFAULT_MODE;
+let meta = metas[mode]; // names, questions, captions… for the current mode
+let t = makeT(mode); // in-code text for the current mode
 const CH = Object.fromEntries(meta.characters.map((c) => [c.id, c]));
 const portraits = makePortraits([...meta.characters.map((c) => c.id), 'dan', 'waffles', 'biscuit', 'prickles']);
 const world = new World($('#scene'), meta);
@@ -38,6 +43,19 @@ const serverNow = () => Date.now() + offset;
 const isDet = () => V?.you.role === 'detective'; // lead or assistant
 const isLead = () => isDet() && !!V?.you.lead;
 const roomName = (id) => meta.rooms[id]?.name ?? id;
+
+/** Switch every screen to Standard or Rookie Mode wording. */
+function applyMode(next) {
+  if (!metas[next] || next === mode) return;
+  mode = next;
+  meta = metas[mode];
+  t = makeT(mode);
+  for (const c of meta.characters) CH[c.id] = c;
+  anchors.setRoomNames(meta.rooms);
+  cine.setMeta(meta);
+  document.body.dataset.mode = mode;
+  closeAllModals();
+}
 const P = (id, cls = '') => `<img class="portrait ${cls}" src="${portraits[id]}" alt="" />`;
 
 // ───────────────────────────── connection ─────────────────────────────
@@ -78,6 +96,7 @@ document.addEventListener('visibilitychange', () => {
 
 socket.on('view', (v) => {
   const prev = V;
+  if (v.mode) applyMode(v.mode);
   V = v;
   recvAt = Date.now();
   offset = v.now - recvAt;
@@ -153,6 +172,7 @@ async function leave() {
 
 function leaveToHome() {
   V = null;
+  applyMode(DEFAULT_MODE);
   seen.clear();
   cine.stop();
   closeAllModals();
@@ -206,6 +226,7 @@ function renderLobby(v) {
       renderLobby(V);
     }
   }));
+  renderModePicker(v);
   const n = v.players.length;
   const hostP = v.players.find((p) => p.isHost);
   const picks = v.players.map((p) => p.pick).filter(Boolean);
@@ -214,8 +235,22 @@ function renderLobby(v) {
   $('#lobbyHint').textContent = host
     ? n < v.limits.min
       ? `Waiting for at least ${v.limits.min} players… share the code!`
-      : `${n} players. Choose roles (up to 2 detectives and 2 murderers), or leave them on 🎲 Random.${picks.includes('lead') ? '' : ' A random player gets offered the lead detective badge.'}`
+      : t('lobbyHintHost', n, picks.includes('lead'))
     : `Waiting for ${hostP?.name ?? 'the host'} to start… (${n}/${v.limits.max})`;
+}
+
+/** Host picks Standard or Rookie Mode; everyone else sees which one is on. */
+function renderModePicker(v) {
+  const host = v.you.isHost;
+  $('#modeBtns').innerHTML = MODES.map(
+    (m) => `<button type="button" class="seg-btn ${v.mode === m ? 'on' : ''}" data-mode="${m}" aria-pressed="${v.mode === m}" ${host ? '' : 'disabled'}>${MODE_INFO[m].label}</button>`,
+  ).join('');
+  $('#modeBtns').querySelectorAll('[data-mode]').forEach((b) => (b.onclick = async () => {
+    if (b.dataset.mode === V?.mode) return;
+    const r = await emit('setMode', { mode: b.dataset.mode });
+    if (!r.ok) toast(r.error);
+  }));
+  $('#modeNote').textContent = `${MODE_INFO[v.mode].note}${host ? '' : ' (The host chooses.)'}`;
 }
 
 // ───────────────────────────── main render ─────────────────────────────
@@ -348,7 +383,7 @@ function renderOffer(v) {
     'offer',
     `<div class="offer">
       <div class="phone ringing" style="background:none"><div class="caller">${P('waffles', 'lg')}<div><h2>Be the detective?</h2>
-      <small>Chief Inspector Prickles needs someone to crack the case of Mr. Dan's last soak.</small></div></div></div>
+      <small>${esc(t('offerText'))}</small></div></div></div>
       <div class="count" id="offerCount">10</div>
       <div class="actions"><button class="btn ghost" id="offerNo">No thanks</button><button class="btn primary big" id="offerYes">🐶 I'll take the case!</button></div>
     </div>`,
@@ -406,7 +441,7 @@ function tickUi() {
   } else if (V.phase === 'briefing') $('#clock').textContent = '5:00';
   const banner = $('#banner');
   if (banner.dataset.kind === 'donut' && V.donut) banner.textContent = `🍩 The detective stepped out for a donut… (${fmt(V.donut.endsAt - serverNow())})`;
-  if (banner.dataset.kind === 'briefing' && V.briefing) banner.textContent = `📞 The detective is on the phone with the Chief… (starts in ≤ ${fmt(V.briefing.endsAt - serverNow())})`;
+  if (banner.dataset.kind === 'briefing' && V.briefing) banner.textContent = t('briefingBanner', fmt(V.briefing.endsAt - serverNow()));
   const oc = $('#offerCount');
   if (oc && V.offer) oc.textContent = Math.max(0, Math.ceil((V.offer.endsAt - serverNow()) / 1000));
   const bar = $('#answerBar');
@@ -498,13 +533,13 @@ function renderSuspectPanel(v) {
       <div class="timerbar"><i id="answerBar"></i></div>
       <div class="opts">
         ${p.options.map((o, i) => `<button class="opt ${chosen === i ? 'chosen' : ''}" data-choice="${i}" ${chosen !== null ? 'disabled' : ''}>${chips(o.tags)}<span>${esc(o.line)}</span></button>`).join('')}
-        <button class="opt confess ${chosen === 'confess' ? 'chosen' : ''}" data-choice="confess" ${chosen !== null ? 'disabled' : ''}><span class="tags"><span class="tagc tag-C">!</span></span><span>Confess: “Fine! It was me! I did it!”</span></button>
+        <button class="opt confess ${chosen === 'confess' ? 'chosen' : ''}" data-choice="confess" ${chosen !== null ? 'disabled' : ''}><span class="tags"><span class="tagc tag-C">!</span></span><span>Confess: “${esc(meta.confess.replace(/[{}]/g, ''))}”</span></button>
       </div>
-      <p class="status">${chosen !== null ? 'Answer locked in…' : '<b>[S]</b> lines cost your <b>Secret Kept</b> badge. Confessing is not an arrest.'}</p></div>`;
+      <p class="status">${chosen !== null ? 'Answer locked in…' : `${t('tagLegend') ? `${t('tagLegend')}<br>` : ''}${t('answerNote')}`}</p></div>`;
     return;
   }
   let status;
-  if (v.accused) status = "🚓 You're at the station. You hear everything clearly now, but you can't answer.";
+  if (v.accused) status = t('stationStatus');
   else if (p) status = p.charId === me ? '🔎 The detective is waiting for you…' : `🔎 The detective is questioning ${esc(CH[p.charId].name)}…`;
   else if (v.detective.loc === CH[me].room) status = '🔎 <b>The detective is here.</b>';
   else status = `🔎 The detective is in the ${esc(roomName(v.detective.loc))}.`;
@@ -568,7 +603,7 @@ function renderLog(v) {
           return `<li><div class="q">🔎 → ${esc(c.name)}: ${esc(meta.questions[e.q].text)}</div><div class="a">${P(c.id, 'sm')}<span>${text}</span></div></li>`;
         })
         .join('')
-    : `<li class="q" style="color:var(--ink-soft)">${isDet() ? 'Answers you hear will be noted here.' : "Snippets of every interrogation drift through the walls. They'll show up here."}</li>`;
+    : `<li class="q" style="color:var(--ink-soft)">${isDet() ? t('logEmptyDetective') : t('logEmptySuspect')}</li>`;
   list.scrollTop = list.scrollHeight;
 }
 
@@ -582,7 +617,7 @@ function renderWhisper(v) {
   $('#partnerName').textContent = v.partner ? CH[v.partner].name : '';
   const input = $('#whisperInput');
   input.disabled = !v.whisper.enabled;
-  input.placeholder = v.whisper.enabled ? 'Only your partner can read this…' : 'No whispering from the station.';
+  input.placeholder = v.whisper.enabled ? 'Only your partner can read this…' : t('whisperClosed');
   if (!seen.has('whisperOpen') && v.whisper.enabled && window.innerWidth > 640) {
     seen.add('whisperOpen');
     panel.classList.remove('hidden');
@@ -686,15 +721,16 @@ function openStoryCard(v, first) {
     `<div class="storycard">
       <div class="head">${P(c.id, 'lg')}<div><small>${first ? 'You are…' : 'Your story card'}</small><h2>${esc(c.name)}</h2>
         <span class="role ${bad ? 'bad' : ''}">${bad ? '🔪 MURDERER' : '😇 INNOCENT'}</span> <small>${esc(c.title)} · ${esc(roomName(c.room))}</small></div></div>
-      <h4>Who you are</h4><p>${esc(card.who)}</p>
-      <h4>You and Mr. Dan</h4><p>${esc(card.withDan)}</p>
-      <h4>Your evening</h4><ul>${card.evening.map((e) => `<li><b>${esc(e.time)}</b><span>${esc(e.text)}</span></li>`).join('')}</ul>
-      ${card.secret ? `<div class="secret">🤫 <b>Your secret [S]:</b> ${esc(card.secret)}</div>` : ''}
-      ${card.watchOut ? `<h4>Watch out</h4><p>${esc(card.watchOut)}</p>` : ''}
-      <h4>Goal</h4><p>${esc(card.goal)}</p>
-      ${card.gossip ? `<h4>Useful gossip</h4><p>${esc(card.gossip)}</p>` : ''}
-      ${v.partner ? `<div class="secret">🤝 <b>Your partner in crime:</b> ${esc(CH[v.partner].name)}. Use the 🤫 whisper chat to keep your stories straight.</div>` : ''}
-      <h4>The toast (everyone knows)</h4><div class="toast-list"><ol>${meta.toast.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></div>
+      <h4>${esc(t('headWho'))}</h4><p>${esc(card.who)}</p>
+      <h4>${esc(t('headWithDan'))}</h4><p>${esc(card.withDan)}</p>
+      ${card.motive ? `<h4>${esc(t('headMotive'))}</h4><p class="motive">${esc(card.motive)}</p>` : ''}
+      <h4>${esc(t('headEvening'))}</h4><ul>${card.evening.map((e) => `<li><b>${esc(e.time)}</b><span>${esc(e.text)}</span></li>`).join('')}</ul>
+      ${card.secret ? `<div class="secret">🤫 <b>${esc(t('labelSecret'))}</b> ${esc(card.secret)}</div>` : ''}
+      ${card.watchOut ? `<h4>${esc(t('headWatchOut'))}</h4><p>${esc(card.watchOut)}</p>` : ''}
+      <h4>${esc(t('headGoal'))}</h4><p>${esc(card.goal)}</p>
+      ${card.gossip ? `<h4>${esc(t('headGossip'))}</h4><p>${esc(card.gossip)}</p>` : ''}
+      ${v.partner ? `<div class="secret">🤝 <b>${esc(t('labelPartner'))}</b> ${esc(CH[v.partner].name)}. ${esc(t('partnerNote'))}</div>` : ''}
+      <h4>${esc(t('headToast'))}</h4><div class="toast-list"><ol>${meta.toast.map((line) => `<li>${esc(line)}</li>`).join('')}</ol></div>
       <div class="actions"><button class="btn primary" data-dismiss>Got it</button></div>
     </div>`,
   );
@@ -741,8 +777,8 @@ function openCaseFile(v) {
     `<div class="phone"><div class="caller">${P('waffles', 'lg')}<div><small>Case file</small><h2>The Last Soak</h2></div></div>
       <h4 style="margin:12px 0 4px">Clues at the pond</h4>
       <div class="clues">${(v.clues || []).map((c) => `<div>${c.icon} ${esc(c.clue)}</div>`).join('')}</div>
-      <h4 style="margin:12px 0 4px">The toast</h4>
-      <div class="clues">${meta.toast.map((t, i) => `<div>${['📖', '♨️', '📜'][i]} ${esc(t)}</div>`).join('')}</div>
+      <h4 style="margin:12px 0 4px">${esc(t('caseToast'))}</h4>
+      <div class="clues">${meta.toast.map((line, i) => `<div>${['📖', '♨️', '📜'][i]} ${esc(line)}</div>`).join('')}</div>
       <h4 style="margin:12px 0 4px">Calls from the Chief</h4>
       <div class="lines">${(v.calls || []).flatMap((c) => c.lines).map((l) => `<div class="line">${esc(l)}</div>`).join('')}</div>
       <div class="actions"><button class="btn primary" data-dismiss>Back to work</button></div></div>`,
@@ -831,7 +867,7 @@ function renderReveal(v) {
     <p class="sub">${esc(heads[1])} ${meWon === undefined ? '' : meWon ? '<b>You win!</b>' : '<b>You lose.</b>'}</p>
     <div class="phone card" style="box-shadow:none;border-width:2px"><div class="caller">${P('prickles', 'sm')}<div><small>Chief Inspector Prickles</small></div></div>
       <div class="lines">${r.finalCall.map((l) => `<div class="line">${esc(l)}</div>`).join('')}</div></div>
-    <h2 style="text-align:center;margin:14px 0 8px">Whodunit: ${esc(culprits)} 🦆${r.murderers.length > 1 ? '🦡' : ''}</h2>
+    <h2 style="text-align:center;margin:14px 0 8px">${esc(t('whodunit'))}: ${esc(culprits)} 🦆${r.murderers.length > 1 ? '🦡' : ''}</h2>
     <div class="reveal-grid">
       <div class="rc">${P('waffles')}<h4>Inspector Waffles</h4><div class="meta">${esc(r.detective.name)} · ${r.detective.assistant ? 'lead detective' : 'detective'}</div>
         <div><span class="badge ${r.detective.won ? 'win' : 'lose'}">${r.detective.won ? 'Won' : 'Lost'}</span>${r.detective.badges.map((b) => `<span class="badge">🏅 ${esc(b)}</span>`).join('')}</div>

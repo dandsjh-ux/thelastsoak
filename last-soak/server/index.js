@@ -7,11 +7,14 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import { Game, MAX_PLAYERS } from './game.js';
 import { cleanName } from './text.js';
+import { DEFAULT_MODE, isMode } from '../shared/strings.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 const PORT = Number(process.env.PORT) || 3000;
-const scenario = JSON.parse(fs.readFileSync(path.join(root, 'scenarios/the-last-soak.json'), 'utf8'));
+const loadScenario = (file) => JSON.parse(fs.readFileSync(path.join(root, 'scenarios', file), 'utf8'));
+// Standard is the original story; Rookie Mode is the same game at a Year 6 reading level.
+const scenarios = { standard: loadScenario('the-last-soak.json'), rookie: loadScenario('the-last-soak.rookie.json') };
 
 const games = new Map(); // code -> Game
 const byToken = new Map(); // token -> { game, player }
@@ -20,10 +23,12 @@ const app = express();
 app.disable('x-powered-by');
 app.get('/healthz', (_req, res) => res.json({ ok: true, rooms: games.size }));
 // Public slice of the scenario only: no dialogue, cards, murderers or timeline ever reach the browser this way.
-const publicScenario = (({ title, rooms, characters, questions, toast, opening, cinematic, victim, detective, assistant, boss, grudges }) => ({
-  title, rooms, characters, questions, toast, opening, cinematic, victim, detective, assistant, boss, grudges,
-}))(scenario);
-app.get('/api/scenario', (_req, res) => res.json(publicScenario));
+const publicSlice = (({ title, rooms, characters, questions, confess, toast, opening, cinematic, victim, detective, assistant, boss, grudges }) => ({
+  title, rooms, characters, questions, confess, toast, opening, cinematic, victim, detective, assistant, boss, grudges,
+}));
+const publicScenarios = Object.fromEntries(Object.entries(scenarios).map(([mode, sc]) => [mode, publicSlice(sc)]));
+// /api/scenario?mode=rookie (defaults to the standard story).
+app.get('/api/scenario', (req, res) => res.json(publicScenarios[isMode(req.query.mode) ? req.query.mode : DEFAULT_MODE]));
 
 const dist = path.join(root, 'dist');
 if (fs.existsSync(dist)) {
@@ -45,7 +50,7 @@ function newCode() {
 
 function createGame() {
   const code = newCode();
-  const game = new Game(code, scenario, {
+  const game = new Game(code, scenarios, {
     onEmpty: (g) => {
       g.clearTimers();
       games.delete(g.code);
@@ -149,6 +154,7 @@ io.on('connection', (socket) => {
     });
 
   on('setRole', (g, p, d) => g.setRole(p.id, String(d.playerId), String(d.role)));
+  on('setMode', (g, p, d) => g.setMode(p.id, String(d.mode)));
   on('start', (g, p) => g.start(p.id));
   on('offerReply', (g, p, d) => g.offerReply(p.id, !!d.accept));
   on('skipCinematic', (g, p) => g.skipCinematic(p.id));

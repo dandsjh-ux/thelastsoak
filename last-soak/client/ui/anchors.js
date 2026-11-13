@@ -7,6 +7,7 @@ export class Anchors {
     this.world = world;
     this.root = $('#anchors');
     this.tags = {};
+    this.roomTags = {};
     this.bubbles = {};
     this.timers = {};
     const all = { ...world.critters, dan: world.dan, waffles: world.detective, biscuit: world.assistant };
@@ -28,8 +29,14 @@ export class Anchors {
       world.scene.add(o);
       const lab = el(`<div class="anchor"><div class="roomtag">${esc(meta.rooms[r.id].name)}</div></div>`);
       this.root.append(lab);
+      this.roomTags[r.id] = lab.firstElementChild;
       world.anchor(lab, o, 0);
     }
+  }
+
+  /** Room names can differ between Standard and Rookie Mode. */
+  setRoomNames(rooms) {
+    for (const [id, tag] of Object.entries(this.roomTags)) tag.textContent = rooms[id].name;
   }
 
   setTag(id, text, cls = '') {
