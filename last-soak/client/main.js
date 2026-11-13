@@ -132,10 +132,26 @@ async function enter(r) {
   history.replaceState(null, '', `?room=${r.code}`);
 }
 
+// Mode for a game you host (the host can still change it in the lobby).
+const MODE_KEY = 'soak.mode';
+let homeMode = MODES.includes(store.get(MODE_KEY)) ? store.get(MODE_KEY) : DEFAULT_MODE;
+function renderHomeMode() {
+  $('#homeModeBtns').innerHTML = MODES.map(
+    (m) => `<button type="button" class="seg-btn ${homeMode === m ? 'on' : ''}" data-mode="${m}" aria-pressed="${homeMode === m}">${MODE_INFO[m].label}</button>`,
+  ).join('');
+  $('#homeModeBtns').querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => {
+    homeMode = b.dataset.mode;
+    store.set(MODE_KEY, homeMode);
+    renderHomeMode();
+  }));
+  $('#homeModeNote').textContent = MODE_INFO[homeMode].note;
+}
+renderHomeMode();
+
 $('#createBtn').onclick = async () => {
   sfx.unlock();
   const name = nameOrErr();
-  if (name) enter(await emit('create', { name }));
+  if (name) enter(await emit('create', { name, mode: homeMode }));
 };
 $('#joinBtn').onclick = async () => {
   sfx.unlock();

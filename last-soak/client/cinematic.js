@@ -108,6 +108,9 @@ export class Cinematic {
     let idx = 0;
     for (let i = 0; i < this.shots.length; i++) if (t >= this.shots[i].at) idx = i;
     if (t < 0) return;
+    // The grudge cards belong to the 'grudges' shot only. A slow or backgrounded tab can jump past
+    // the shot after it, so never leave them behind.
+    if (this.shots[idx].shot !== 'grudges') this.clearGrudges();
     if (idx !== this.cur) {
       this.cur = idx;
       const shot = this.shots[idx];
@@ -126,8 +129,14 @@ export class Cinematic {
     this.during(this.shots[idx].shot, t - this.shots[idx].at, t, this.shotLength(idx));
   }
 
+  clearGrudges() {
+    const box = $('#cineGrudges');
+    if (box.firstChild) box.innerHTML = '';
+  }
+
   /** Set up the scene for a shot (also used when joining mid-cinematic). */
   enter(name, dt) {
+    if (name !== 'grudges') this.clearGrudges();
     const w = this.world;
     const g = w.manor.garden;
     const foyer = w.rooms.foyer.center;

@@ -344,10 +344,13 @@ input:focus { box-shadow: 0 0 0 4px rgba(255, 143, 184, 0.45); }
 .grudge small { color: var(--ink-soft); font-size: 12px; }
 .grudge span { display: block; font-size: 15px; line-height: 1.3; }
 @media (max-width: 640px) {
-  .cine-grudges { grid-template-columns: 1fr; gap: 4px; }
-  .grudge { padding: 3px 8px; }
-  .grudge .portrait { width: 34px; height: 34px; }
-  .grudge span { font-size: 13px; }
+  /* Two compact columns so the cards leave room for the caption underneath. */
+  .cine-grudges { grid-template-columns: 1fr 1fr; gap: 4px; top: calc(4vh + 8px); }
+  .grudge { padding: 3px 6px; gap: 5px; align-items: flex-start; border-radius: 12px; border-width: 2px; box-shadow: 0 2px 0 var(--ink); }
+  .grudge .portrait { width: 26px; height: 26px; margin-top: 2px; }
+  .grudge b { font-size: 13px; }
+  .grudge small { display: none; }
+  .grudge span { font-size: 11.5px; line-height: 1.25; }
 }
 .cine-title { position: absolute; inset: 0; display: grid; place-items: center; }
 .cine-title h1 { font-size: clamp(44px, 9vw, 96px); color: #fff; margin: 0; letter-spacing: 3px; text-shadow: 0 6px 0 var(--pink-d), 0 10px 30px rgba(0, 0, 0, 0.5); animation: pop 0.6s cubic-bezier(.3, 1.6, .5, 1); }

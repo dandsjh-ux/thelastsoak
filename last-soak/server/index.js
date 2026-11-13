@@ -100,12 +100,13 @@ io.on('connection', (socket) => {
     seat(found.game, found.player, ack);
   });
 
-  socket.on('create', ({ name } = {}, ack) => {
+  socket.on('create', ({ name, mode } = {}, ack) => {
     const n = cleanName(name);
     if (!n) return reply(ack, { ok: false, error: 'Pick a name first.' });
     leaveCurrent();
     const game = createGame();
     const player = game.addPlayer(n);
+    if (isMode(mode)) game.setMode(player.id, mode); // the host's choice on the create screen
     byToken.set(player.token, { game, player });
     seat(game, player, ack);
   });

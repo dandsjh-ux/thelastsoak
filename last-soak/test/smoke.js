@@ -284,6 +284,17 @@ try {
   N.token = (await N.emit('join', { name: 'Ned', code: g4.code })).token;
   await until(() => M.view?.players.length === 2 && N.view?.players.length === 2, 'two players');
   assert.equal(M.view.mode, 'standard', 'standard is the default mode');
+  // The create screen can pick the mode up front.
+  const Z = client('Zed');
+  await new Promise((r) => Z.s.on('connect', r));
+  await Z.emit('create', { name: 'Zed', mode: 'rookie' });
+  await until(() => Z.view?.mode === 'rookie', 'game created in Rookie Mode');
+  const Y = client('Yan');
+  await new Promise((r) => Y.s.on('connect', r));
+  await Y.emit('create', { name: 'Yan', mode: 'bogus' });
+  await until(() => Y.view?.mode === 'standard', 'unknown create mode falls back to standard');
+  Z.s.close();
+  Y.s.close();
   assert.equal((await N.emit('setMode', { mode: 'rookie' })).ok, false, 'only the host picks the mode');
   assert.equal((await M.emit('setMode', { mode: 'nonsense' })).ok, false, 'unknown mode rejected');
   assert.ok((await M.emit('setMode', { mode: 'rookie' })).ok, 'host picks Rookie Mode');
